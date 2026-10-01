@@ -5,6 +5,15 @@ illumination normalization (Stage 1) runs lazily per pyramid level inside
 the classical matcher rather than once upfront, since it's cheap only on
 the much-smaller per-level tiles, not the full multi-hundred-megapixel
 source crop.
+
+Accuracy-improvement stages added after the first real end-to-end run (see
+CLAUDE.md's "known quality ceiling" and "accuracy improvements" sections),
+inserted between matching and the final evaluation:
+  4.5a `geometry.consistency` -- pairwise geometric-consistency confidence boost.
+  4.5b `preprocessing.relief` -- DTM-based relief-risk confidence weighting.
+  5.5  `geometry.refine` -- sub-pixel refinement + guided densification.
+Plus a third matcher, `matching.crater` (crater-constellation matching),
+added alongside LoFTR/ORB rather than replacing either.
 """
 
 import argparse
@@ -15,8 +24,11 @@ import rasterio
 import yaml
 
 from algo.evaluation.metrics import evaluate
+from algo.geometry.consistency import boost_by_global_consistency
+from algo.geometry.refine import refine_and_densify
 from algo.geometry.robust_fit import fit_transform
 from algo.matching.classical import enforce_uniform_distribution, match_classical
+from algo.matching.crater import match_crater
 from algo.matching.learned import Match, match_learned
 from algo.preprocessing.grid import (
     crop_reference_to_window,
@@ -25,6 +37,7 @@ from algo.preprocessing.grid import (
     reference_window_for_source_window,
 )
 from algo.preprocessing.metadata import load_metadata
+from algo.preprocessing.relief import apply_relief_risk_weighting
 from algo.pyramid.coarse_to_fine import align_coarse_to_fine
 from algo.utils.io import find_pds4_product
 
@@ -71,6 +84,10 @@ def run(config: dict) -> dict:
         level_matches = list(kept_learned)
         if len(kept_learned) < len(learned) or not learned:
             level_matches += match_classical(level, config["matching"])
+        # Crater-constellation matching (algo.matching.crater) runs regardless of learned-
+        # matcher confidence: it targets the self-similar terrain that fools *both* LoFTR and
+        # ORB (CLAUDE.md's "known quality ceiling"), so it's an addition, not a fallback.
+        level_matches += match_crater(level, config["matching"])
 
         # Rescale from level-local pixel coords back to crop-native / full-reference-native coords.
         for m in level_matches:
@@ -85,8 +102,25 @@ def run(config: dict) -> dict:
                 )
             )
 
+    dem_cfg = config.get("dem", {})
+    if dem_cfg.get("enabled"):
+        matches = apply_relief_risk_weighting(matches, reference_transform, reference_crs, dem_cfg["path"])
+
+    matches = boost_by_global_consistency(matches)
     matches = enforce_uniform_distribution(matches, config["anms"])
     transform, inliers = fit_transform(matches, config["geometry"])
+
+    # Sub-pixel refine + guided densification (algo.geometry.refine), seeded by the first-pass
+    # inliers. Only adopted if it doesn't make things worse -- matches/transform/inliers are
+    # replaced together so inlier_ratio stays a meaningful <=1 fraction of its own candidate pool.
+    if transform is not None and len(inliers) >= 4:
+        refined_matches = refine_and_densify(
+            inliers, source_crop, reference_crop, transform, source_meta.gsd, reference_meta.gsd,
+            reference_row_offset, reference_col_offset,
+        )
+        refined_transform, refined_inliers = fit_transform(refined_matches, config["geometry"])
+        if refined_transform is not None and len(refined_inliers) >= len(inliers):
+            matches, transform, inliers = refined_matches, refined_transform, refined_inliers
 
     return evaluate(matches, inliers, transform, config["evaluation"])
 

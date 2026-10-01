@@ -29,6 +29,11 @@ matching:
   primary: loftr           # loftr | classical
   fallback: classical       # phase-congruency / RIFT-style, used on low-confidence tiles
   confidence_threshold: 0.5
+  crater:                  # algo.matching.crater -- blob detection params, see module docstring
+    num_peaks: 40           # per polarity (bright+dark), per tile -- keep this small and sparse
+    min_distance: 8
+    smooth_sigma: 2
+    ratio_test: 0.75
 
 anms:
   grid_size: 8              # tiles per axis for uniform-distribution enforcement

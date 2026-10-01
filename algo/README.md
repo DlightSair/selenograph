@@ -48,4 +48,4 @@ algo/
 python -m algo.pipeline --config configs/default.yaml
 ```
 
-Every stage is implemented and runs end-to-end against real data (see `CLAUDE.md` for current match-quality caveats). Not implemented yet: DTM-based orthorectification (`geometry/orthorectify.py`) and sub-pixel inlier refinement — homography + MAGSAC++ only so far.
+Every stage is implemented and runs end-to-end against real data, plus four accuracy-improvement stages (crater-constellation matching, geometric-consistency boosting, DTM relief weighting, sub-pixel refine/densify) — see `CLAUDE.md` for what they do and the current match-quality caveats. Not implemented yet: DTM-based orthorectification (`geometry/orthorectify.py`) — homography + MAGSAC++ only so far.
