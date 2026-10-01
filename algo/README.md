@@ -12,6 +12,7 @@ py -3.11 -m venv .venv
 .venv\Scripts\activate
 pip install -r requirements.txt
 pip install -e .
+python scripts/download_loftr_weights.py   # ~46MB; kornia's own download URL is a dead host, see script docstring
 ```
 
 ## Test
@@ -20,7 +21,7 @@ pip install -e .
 pytest tests/ -v
 ```
 
-`test_metadata.py` runs against the real TMC-2 DTM product in `../data/dem/tycho/` — it's skipped automatically if that data isn't present.
+`test_metadata.py` and `test_pipeline.py::test_run_end_to_end` run against the real Tycho source/reference/DEM data under `../data/` — skipped automatically if that data isn't present. `test_run_end_to_end` is slow (~1 min: windowed-reads a 1.7GB source file, runs LoFTR + ORB matching).
 
 ## Layout
 
@@ -47,4 +48,4 @@ algo/
 python -m algo.pipeline --config configs/default.yaml
 ```
 
-(stub — `pipeline.py` currently just wires the stages together; each stage is a TODO)
+Every stage is implemented and runs end-to-end against real data (see `CLAUDE.md` for current match-quality caveats). Not implemented yet: DTM-based orthorectification (`geometry/orthorectify.py`) and sub-pixel inlier refinement — homography + MAGSAC++ only so far.

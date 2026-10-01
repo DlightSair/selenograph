@@ -1,17 +1,35 @@
-"""Stage 5 — outlier rejection and transform estimation, with sub-pixel refinement."""
+"""Stage 5 — outlier rejection and transform estimation.
+
+Full DTM-based orthorectification (geometry.orthorectify) for high-relief
+terrain is deferred -- homography is the only transform implemented so far.
+Sub-pixel refinement of inliers (local NCC/phase-correlation around each
+match) is also deferred; MAGSAC++'s own inlier selection already accounts
+for most of the achievable accuracy gain at this stage.
+"""
+
+from __future__ import annotations
+
+import cv2
+import numpy as np
+
+_RANSAC_METHODS = {"magsac": cv2.USAC_MAGSAC, "ransac": cv2.RANSAC}
 
 
-def fit_transform(matches, geometry_cfg):
-    """
-    TODO:
-    - Robustly fit `geometry_cfg['transform']` (homography/affine) with MAGSAC++
-      (cv2.USAC_MAGSAC) or graph-cut RANSAC over `matches`.
-    - For high-relief terrain (crater walls, where true 3D parallax between differing
-      orbital viewpoints breaks a flat 2D homography), delegate to
-      geometry.orthorectify.dtm_orthorectify instead.
-    - After the initial fit, refine each inlier's location with local NCC/phase-correlation
-      subpixel refinement to actually deliver sub-pixel accuracy.
+def fit_transform(matches: list, geometry_cfg: dict) -> tuple[np.ndarray | None, list]:
+    if len(matches) < 4:
+        return None, []
 
-    Returns (transform, inlier_matches).
-    """
-    raise NotImplementedError
+    src_pts = np.array([m.source_xy for m in matches], dtype=np.float32).reshape(-1, 1, 2)
+    dst_pts = np.array([m.reference_xy for m in matches], dtype=np.float32).reshape(-1, 1, 2)
+
+    method = _RANSAC_METHODS[geometry_cfg["ransac"]]
+    transform, mask = cv2.findHomography(
+        src_pts, dst_pts, method=method, ransacReprojThreshold=geometry_cfg["reproj_threshold_px"]
+    )
+
+    if transform is None:
+        return None, []
+
+    inlier_mask = mask.ravel().astype(bool)
+    inliers = [m for m, keep in zip(matches, inlier_mask) if keep]
+    return transform, inliers

@@ -14,7 +14,16 @@ SIH PS 26166 — register Chandrayaan-2 optical imagery (OHRC/TMC-2/IIRS) agains
 - Run: `python -m algo.pipeline --config algo/configs/default.yaml`
 
 ## Status
-Stage 0 (`preprocessing/metadata.py`, `utils/io.py`) implemented and runs end-to-end (`load_metadata`) against real source + reference + DEM, all wired through `configs/default.yaml`. Every other `algo/` stage is still a stub (`NotImplementedError`). No `ui/` or `desktop/` code yet.
+Every pipeline stage (0-6) is implemented and `python -m algo.pipeline --config configs/default.yaml` runs end-to-end against the real Tycho data below — not a stub anymore. No `ui/` or `desktop/` code yet.
+
+Key implementation decisions (deviate from the original stub sketch, see each module's docstring for why):
+- **Stage 0.5 (new)** `preprocessing/grid.py` — Calibrated products aren't map-projected, so Stage 0's AOI can't crop them by lat/lon directly. Uses the ground-control grid CSV ISRO ships alongside each product (`geometry/calibrated/.../*_g_grd_*.csv`, regular (line,sample)↔(lat,lon) points) to window a huge orbit strip (213595 lines here) down to ~17K lines before any pixel processing.
+- **Stage 1** `preprocessing/illumination.py` — DEM-based hillshade re-rendering isn't viable: the LRO reference is a pre-blended QuickMap mosaic with no single sun angle to re-target. Falls back to a Gabor-energy structure map, used only by the classical matcher — the learned matcher (LoFTR) runs on the plain tile instead.
+- **Stage 2** `pyramid/coarse_to_fine.py` — builds a source pyramid and resamples the reference to match each level's GSD (skips levels needing an unreasonable reference resize), so matching happens at a shared physical scale across the ~20x gap.
+- **Stage 3 primary** `matching/learned.py` — kornia's LoFTR. Its `pretrained="outdoor"` hardcodes a dead academic HTTP host; weights are instead downloaded once via `scripts/download_loftr_weights.py` (official kornia HuggingFace mirror) into `algo/models/` (gitignored) and loaded manually.
+- **Stage 5** `geometry/robust_fit.py` — homography + `cv2.USAC_MAGSAC` only; DTM orthorectification (`geometry/orthorectify.py`) and sub-pixel refinement are still stubs.
+
+**Known quality issue**: current real-data run gets only 4 inliers (~50 raw matches). Root cause, confirmed visually (`algo/scripts/visualize_run.py`): the cropped TMC-2 source is a narrow ~17km-wide push-broom swath that only grazes part of Tycho crater, while the reference shows the full ~85km crater — genuinely limited spatial overlap, not (only) a matching-quality problem. Next lever: narrow the AOI crop to the swath's actual footprint, or source a wider/stereo TMC-2 pass.
 
 ## Data on disk — Tycho AOI, all three slots real
 - **Source** `data/raw/chandrayaan2/tmc2/ch2_tmc_ncn_20240124T0838058678_d_img_d18/` — Calibrated TMC-2 image, orbit 19674, 4.2 m/px. This is the exact companion image the Tycho DTM below was derived from (same orbit, same sun angle) — found by matching orbit/timestamp after two off-AOI (polar) downloads turned up no Tycho coverage via direct AOI search.

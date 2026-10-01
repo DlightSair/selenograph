@@ -1,16 +1,81 @@
-"""Stage 6 — evaluation metrics: RMSE, inlier count/ratio, spatial uniformity."""
+"""Stage 6 — evaluation metrics: RMSE, inlier count/ratio, spatial uniformity.
+Writes metrics.json, matches.csv, transform.json, and a match-overlay PNG to
+evaluation_cfg['output_dir']/run_id/.
+"""
+
+from __future__ import annotations
+
+import json
+from datetime import datetime, timezone
+from pathlib import Path
+
+import cv2
+import numpy as np
 
 
-def evaluate(matches, inliers, transform, evaluation_cfg) -> dict:
-    """
-    TODO:
-    - RMSE of inlier residuals after applying `transform`.
-    - inlier_count = len(inliers); inlier_ratio = len(inliers) / len(matches).
-    - Spatial-uniformity metric: coefficient of variation of inlier match density across
-      a grid over the image (low CoV == matches spread evenly, satisfying the "uniform
-      distribution across the images" requirement).
-    - Write registered output + match-point table to `evaluation_cfg['output_dir']`.
+def evaluate(matches: list, inliers: list, transform, evaluation_cfg: dict, run_id: str | None = None) -> dict:
+    run_id = run_id or datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    output_dir = Path(evaluation_cfg["output_dir"]) / run_id
+    output_dir.mkdir(parents=True, exist_ok=True)
 
-    Returns a dict of {rmse, inlier_count, inlier_ratio, uniformity_cov}.
-    """
-    raise NotImplementedError
+    if transform is None or not inliers:
+        results = {
+            "rmse": None,
+            "inlier_count": 0,
+            "inlier_ratio": 0.0,
+            "uniformity_cov": None,
+            "match_count": len(matches),
+        }
+        (output_dir / "metrics.json").write_text(json.dumps(results, indent=2))
+        return results
+
+    src = np.array([m.source_xy for m in inliers], dtype=np.float64)
+    dst = np.array([m.reference_xy for m in inliers], dtype=np.float64)
+
+    projected = cv2.perspectiveTransform(src.reshape(-1, 1, 2).astype(np.float32), transform).reshape(-1, 2)
+    residuals = np.linalg.norm(projected - dst, axis=1)
+    rmse = float(np.sqrt(np.mean(residuals**2)))
+
+    results = {
+        "rmse": rmse,
+        "inlier_count": len(inliers),
+        "inlier_ratio": len(inliers) / len(matches) if matches else 0.0,
+        "uniformity_cov": _spatial_uniformity(dst, grid_size=4),
+        "match_count": len(matches),
+    }
+
+    (output_dir / "metrics.json").write_text(json.dumps(results, indent=2))
+    _write_matches_csv(output_dir / "matches.csv", inliers)
+    _write_transform_json(output_dir / "transform.json", transform)
+
+    return results
+
+
+def _spatial_uniformity(points: np.ndarray, grid_size: int) -> float:
+    """Coefficient of variation of inlier counts across a grid_size x grid_size
+    grid over the reference frame -- low CoV means matches are spread evenly
+    rather than clustered (the "uniform distribution" requirement)."""
+    x_min, y_min = points.min(axis=0)
+    x_max, y_max = points.max(axis=0)
+    cell_w = (x_max - x_min) / grid_size or 1.0
+    cell_h = (y_max - y_min) / grid_size or 1.0
+
+    counts = np.zeros((grid_size, grid_size))
+    for x, y in points:
+        cx = min(int((x - x_min) / cell_w), grid_size - 1)
+        cy = min(int((y - y_min) / cell_h), grid_size - 1)
+        counts[cy, cx] += 1
+
+    mean = counts.mean()
+    return float(counts.std() / mean) if mean > 0 else float("inf")
+
+
+def _write_matches_csv(path: Path, matches: list) -> None:
+    lines = ["source_x,source_y,reference_x,reference_y,confidence"]
+    for m in matches:
+        lines.append(f"{m.source_xy[0]},{m.source_xy[1]},{m.reference_xy[0]},{m.reference_xy[1]},{m.confidence}")
+    path.write_text("\n".join(lines))
+
+
+def _write_transform_json(path: Path, transform: np.ndarray) -> None:
+    path.write_text(json.dumps({"homography": transform.tolist()}, indent=2))

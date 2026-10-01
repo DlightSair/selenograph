@@ -1,17 +1,16 @@
 # core
 numpy
 scipy
-opencv-python
+opencv-contrib-python   # contrib build needed for cv2.USAC_MAGSAC (Stage 5)
 scikit-image
+matplotlib              # diagnostic overlays only (scripts/visualize_run.py)
 
 # geospatial / raster IO + PDS metadata
 rasterio
 pyproj
 
-# robust estimation
-# (MAGSAC++ ships in opencv-contrib-python's cv2.USAC_MAGSAC flag — use that instead of opencv-python above if needed)
-
 # deep learning matcher (Stage 3 primary — pretrained, no training required)
+# checkpoint isn't on PyPI: run scripts/download_loftr_weights.py once after install
 torch
 kornia          # has LoFTR built in: kornia.feature.LoFTR
 

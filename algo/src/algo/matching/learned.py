@@ -1,9 +1,39 @@
-"""Stage 3 (primary) — pretrained dense matcher (e.g. LoFTR via kornia.feature.LoFTR).
+"""Stage 3 (primary) — pretrained dense matcher: kornia's LoFTR ('outdoor'
+weights). No lunar-specific training: a transformer trained on terrestrial
+stereo pairs still picks up generic texture/structure correspondence. Runs
+on the plain contrast-stretched tile (not the Gabor structure map used by
+the classical fallback) -- relies on the pretrained model's own robustness
+rather than a hand-built illumination-invariant representation.
 
-No lunar-specific training needed to start: use off-the-shelf pretrained weights and
-only fine-tune later if time allows and a weakly-labeled correspondence set exists
-(e.g. bootstrapped from the classical matcher's high-confidence inliers).
+kornia's LoFTR(pretrained="outdoor") hardcodes a dead academic HTTP host
+(cmp.felk.cvut.cz) for the checkpoint download. We load the same checkpoint
+(verified identical, from the official kornia HuggingFace org) from
+algo/models/loftr_outdoor.ckpt instead, downloaded once via
+scripts/download_loftr_weights.py.
+
+Falls back to matching.classical when confidence is low (shadowed crater
+interiors, featureless mare), when torch/kornia aren't installed, or when
+the checkpoint hasn't been downloaded.
 """
+
+from __future__ import annotations
+
+from pathlib import Path
+
+import numpy as np
+
+try:
+    import kornia.feature as KF
+    import torch
+
+    _AVAILABLE = True
+except ImportError:
+    _AVAILABLE = False
+
+_CHECKPOINT_PATH = Path(__file__).parents[3] / "models" / "loftr_outdoor.ckpt"
+
+_matcher = None
+_load_failed = False
 
 
 class Match:
@@ -13,12 +43,54 @@ class Match:
         self.confidence = confidence
 
 
+def _get_matcher():
+    global _matcher, _load_failed
+    if _load_failed:
+        raise NotImplementedError("LoFTR checkpoint unavailable")
+    if _matcher is None:
+        if not _CHECKPOINT_PATH.exists():
+            _load_failed = True
+            raise NotImplementedError(
+                f"LoFTR checkpoint not found at {_CHECKPOINT_PATH} -- run scripts/download_loftr_weights.py"
+            )
+        try:
+            matcher = KF.LoFTR(pretrained=None)
+            checkpoint = torch.load(_CHECKPOINT_PATH, map_location=torch.device("cpu"))
+            matcher.load_state_dict(checkpoint["state_dict"])
+            matcher.eval()
+            _matcher = matcher
+        except Exception as e:
+            _load_failed = True
+            raise NotImplementedError(f"LoFTR checkpoint failed to load: {e}") from e
+    return _matcher
+
+
+def _to_tensor(image: np.ndarray):
+    """Grayscale float array -> 1x1xHxW tensor in [0, 1], H/W rounded down to
+    a multiple of 8 (LoFTR's internal downsampling requirement)."""
+    h, w = image.shape
+    h8, w8 = (h // 8) * 8, (w // 8) * 8
+    cropped = image[:h8, :w8].astype(np.float32)
+    span = cropped.max() - cropped.min()
+    norm = (cropped - cropped.min()) / (span if span > 0 else 1.0)
+    return torch.from_numpy(norm)[None, None]
+
+
 def match_learned(level, matching_cfg) -> list[Match]:
-    """
-    TODO:
-    - Run kornia.feature.LoFTR (or similar detector-free transformer matcher) on
-      `level.source_tile` vs `level.reference_tile`.
-    - Return a list of Match objects with confidence scores so the pipeline can route
-      low-confidence tiles to the classical fallback (Stage 3 cross-check).
-    """
-    raise NotImplementedError
+    if not _AVAILABLE:
+        raise NotImplementedError("torch/kornia not installed")
+    if min(level.source_tile.shape) < 8 or min(level.reference_tile.shape) < 8:
+        return []
+
+    matcher = _get_matcher()
+    source_t = _to_tensor(level.source_tile)
+    reference_t = _to_tensor(level.reference_tile)
+
+    with torch.no_grad():
+        out = matcher({"image0": source_t, "image1": reference_t})
+
+    kpts0 = out["keypoints0"].numpy()
+    kpts1 = out["keypoints1"].numpy()
+    conf = out["confidence"].numpy()
+
+    return [Match(tuple(kpts0[i]), tuple(kpts1[i]), float(conf[i])) for i in range(len(conf))]
