@@ -1,0 +1,43 @@
+# Pipeline configuration — see docs/architecture.md for what each stage does.
+
+aoi:
+  name: tycho_crater
+  lat_min: -43.45
+  lat_max: -43.25
+  lon_min: 348.55
+  lon_max: 348.85
+
+source:
+  instrument: TMC2          # TMC2 | OHRC | IIRS
+  product_type: calibrated  # raw | calibrated | derived_dtm | derived_ortho
+  path: ../data/raw/chandrayaan2/
+
+reference:
+  provider: lro_quickmap
+  layer: WAC+NAC+NAC_ROI_MOSAIC
+  path: ../data/raw/lro_reference/
+
+dem:
+  enabled: false
+  path: ../data/dem/
+
+pyramid:
+  levels: 4
+  downsample_factor: 4
+
+matching:
+  primary: loftr           # loftr | classical
+  fallback: classical       # phase-congruency / RIFT-style, used on low-confidence tiles
+  confidence_threshold: 0.5
+
+anms:
+  grid_size: 8              # tiles per axis for uniform-distribution enforcement
+  max_matches_per_tile: 25
+
+geometry:
+  transform: homography     # homography | affine | dtm_orthorectify
+  ransac: magsac            # magsac | ransac
+  reproj_threshold_px: 1.0
+
+evaluation:
+  output_dir: ../data/results/

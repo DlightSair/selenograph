@@ -1,0 +1,22 @@
+# core
+numpy
+scipy
+opencv-python
+scikit-image
+
+# geospatial / raster IO + PDS metadata
+rasterio
+pyproj
+
+# robust estimation
+# (MAGSAC++ ships in opencv-contrib-python's cv2.USAC_MAGSAC flag — use that instead of opencv-python above if needed)
+
+# deep learning matcher (Stage 3 primary — pretrained, no training required)
+torch
+kornia          # has LoFTR built in: kornia.feature.LoFTR
+
+# config / CLI
+pyyaml
+
+# tests
+pytest

@@ -1,0 +1,28 @@
+# data (large, not committed)
+data/raw/
+data/dem/
+data/processed/
+data/results/
+!data/**/.gitkeep
+
+# pretrained weights
+algo/models/*
+!algo/models/.gitkeep
+
+# python
+__pycache__/
+*.pyc
+.venv/
+*.egg-info/
+
+# notebooks
+.ipynb_checkpoints/
+
+# ui
+ui/node_modules/
+ui/dist/
+ui/.next/
+
+# os / editor
+.DS_Store
+.vscode/
