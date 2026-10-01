@@ -4,12 +4,23 @@ Core CV/DL package. See [../docs/architecture.md](../docs/architecture.md) for t
 
 ## Setup
 
+Use Python 3.11 (rasterio/torch wheel availability lags on newer versions).
+
 ```bash
 cd algo
-python -m venv .venv
+py -3.11 -m venv .venv
 .venv\Scripts\activate
 pip install -r requirements.txt
+pip install -e .
 ```
+
+## Test
+
+```bash
+pytest tests/ -v
+```
+
+`test_metadata.py` runs against the real TMC-2 DTM product in `../data/dem/tycho/` — it's skipped automatically if that data isn't present.
 
 ## Layout
 

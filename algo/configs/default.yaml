@@ -18,8 +18,8 @@ reference:
   path: ../data/raw/lro_reference/
 
 dem:
-  enabled: false
-  path: ../data/dem/
+  enabled: true
+  path: ../data/dem/tycho/ch2_tmc_ndn_20240124T0838058678_d_dtm_d18/data/derived/20240124/ch2_tmc_ndn_20240124T0838058678_d_dtm_d18.tif
 
 pyramid:
   levels: 4
