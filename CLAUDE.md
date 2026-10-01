@@ -18,4 +18,6 @@ Stage 0 (`preprocessing/metadata.py`, `utils/io.py`) implemented and tested agai
 
 ## Data on disk
 - `data/dem/tycho/` — real TMC-2 Derived DTM (10 m/px elevation), covers Tycho crater AOI. Used as Stage 1/5 DEM input, not a source image.
-- Still needed: a Calibrated source image (OHRC or TMC-2) and an LRO WAC/NAC reference export, both over the same Tycho AOI — see `algo/scripts/download_*.py`.
+- `data/raw/lro_reference/tycho/wac_nac/` — real LRO WAC reference export (PNG+VRT, 86 m/px, orthographic projection), full Tycho crater. This is the reference/fixed image.
+- `data/raw/lro_reference/tycho/catalog/` — QuickMap product-search catalogs (GeoJSON footprints + metadata, no pixel data) for candidate WAC/NAC frames over Tycho; useful for picking a higher-res NAC tile later.
+- Still needed: a Calibrated **source** image (OHRC or TMC-2) from ISSDC chmapbrowse, over the same Tycho AOI — see `algo/scripts/download_chandrayaan2.py`.

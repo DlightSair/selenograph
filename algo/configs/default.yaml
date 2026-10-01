@@ -15,7 +15,7 @@ source:
 reference:
   provider: lro_quickmap
   layer: WAC+NAC+NAC_ROI_MOSAIC
-  path: ../data/raw/lro_reference/
+  path: ../data/raw/lro_reference/tycho/wac_nac/quickmap-lroc.vrt
 
 dem:
   enabled: true
