@@ -19,8 +19,14 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
+import pyproj
 import rasterio
+from rasterio.transform import rowcol
 from rasterio.windows import Window
+
+from algo.utils.io import MOON_RADIUS_M
+
+_MOON_GEOGRAPHIC = pyproj.CRS.from_proj4(f"+proj=longlat +a={MOON_RADIUS_M} +b={MOON_RADIUS_M} +no_defs")
 
 
 @dataclass
@@ -77,11 +83,12 @@ def crop_source_to_aoi(
     lon_min: float,
     lon_max: float,
     margin_px: int = 200,
-) -> tuple[np.ndarray, tuple[int, int]]:
+) -> tuple[np.ndarray, tuple[int, int, int, int]]:
     """Windowed read of the source raster (opened via its PDS4 .xml label,
     since raw .img files have no self-describing header) covering the AOI.
-    Returns (cropped_array, (row_offset, col_offset)) -- the offset lets a
-    later pixel coordinate be mapped back into the original full strip."""
+    Returns (cropped_array, (row_start, row_stop, col_start, col_stop)) in the
+    original full-strip pixel grid, for reference_window_for_source_window and
+    for mapping a later match coordinate back into the full strip."""
     grid = load_geometry_grid(grid_csv_path)
     row_start, row_stop, col_start, col_stop = bbox_to_window(
         grid, lat_min, lat_max, lon_min, lon_max, margin_px
@@ -93,4 +100,56 @@ def crop_source_to_aoi(
         window = Window(col_start, row_start, col_stop - col_start, row_stop - row_start)
         array = ds.read(1, window=window)
 
-    return array, (row_start, col_start)
+    return array, (row_start, row_stop, col_start, col_stop)
+
+
+def _nearest_lonlat(grid: ControlGrid, line: int, sample: int) -> tuple[float, float]:
+    dist_sq = (grid.lines - line) ** 2 + (grid.samples - sample) ** 2
+    idx = int(np.argmin(dist_sq))
+    return grid.lons[idx], grid.lats[idx]
+
+
+def reference_window_for_source_window(
+    grid: ControlGrid,
+    source_window: tuple[int, int, int, int],
+    reference_transform,
+    reference_crs,
+    margin_px: int = 20,
+) -> tuple[int, int, int, int]:
+    """Pixel window in the REFERENCE raster covering the same ground
+    footprint as a source crop window, by looking up each corner's lat/lon
+    via the control grid and reprojecting into the reference's CRS. Tighter
+    and shape-matched to the source swath, unlike using the reference's
+    whole exported tile -- a narrow push-broom strip and a square AOI export
+    otherwise overlap very little, which starves the matcher."""
+    row_start, row_stop, col_start, col_stop = source_window
+    transformer = pyproj.Transformer.from_crs(_MOON_GEOGRAPHIC, reference_crs, always_xy=True)
+
+    ref_rows, ref_cols = [], []
+    for row, col in ((row_start, col_start), (row_start, col_stop), (row_stop, col_start), (row_stop, col_stop)):
+        lon, lat = _nearest_lonlat(grid, row, col)
+        x, y = transformer.transform(lon, lat)
+        ref_row, ref_col = rowcol(reference_transform, x, y)
+        ref_rows.append(ref_row)
+        ref_cols.append(ref_col)
+
+    return (
+        max(min(ref_rows) - margin_px, 0),
+        max(ref_rows) + margin_px,
+        max(min(ref_cols) - margin_px, 0),
+        max(ref_cols) + margin_px,
+    )
+
+
+def crop_reference_to_window(reference_path: str | Path, window: tuple[int, int, int, int]) -> np.ndarray:
+    """Windowed read of the reference raster's RGB bands, averaged to
+    grayscale, over a (row_start, row_stop, col_start, col_stop) window."""
+    row_start, row_stop, col_start, col_stop = window
+    with rasterio.open(reference_path) as ds:
+        row_stop = min(row_stop, ds.height)
+        col_stop = min(col_stop, ds.width)
+        row_start = max(row_start, 0)
+        col_start = max(col_start, 0)
+        rio_window = Window(col_start, row_start, col_stop - col_start, row_stop - row_start)
+        bands = ds.read([1, 2, 3], window=rio_window)
+    return bands.mean(axis=0)
