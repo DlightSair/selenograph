@@ -13,9 +13,11 @@ from algo.utils.io import find_pds4_product
 DATA_ROOT = Path(__file__).parents[2] / "data"
 DTM_PRODUCT = DATA_ROOT / "dem" / "tycho" / "ch2_tmc_ndn_20240124T0838058678_d_dtm_d18"
 OHRC_PRODUCT = DATA_ROOT / "raw" / "chandrayaan2" / "ohrc" / "ch2_ohr_ncp_20241115T1525004388_d_img_d18"
+TMC2_PRODUCT = DATA_ROOT / "raw" / "chandrayaan2" / "tmc2" / "ch2_tmc_ncf_20230127T1218474820_d_img_d32"
 
 skip_without_dtm = pytest.mark.skipif(not DTM_PRODUCT.exists(), reason="sample DTM product not present")
 skip_without_ohrc = pytest.mark.skipif(not OHRC_PRODUCT.exists(), reason="sample OHRC product not present")
+skip_without_tmc2 = pytest.mark.skipif(not TMC2_PRODUCT.exists(), reason="sample TMC-2 image product not present")
 
 
 @skip_without_dtm
@@ -77,3 +79,16 @@ def test_parse_pds4_label_on_ohrc_product():
     # Label states 0.24 m/px; our great-circle estimate is rough near the pole
     # (longitude degenerates there) so allow a looser tolerance than the DTM case.
     assert meta.gsd == pytest.approx(0.24, rel=0.2)
+
+
+@skip_without_tmc2
+def test_parse_pds4_label_on_tmc2_product():
+    """A third real product (Calibrated TMC-2, North Pole footprint) -- same
+    parser, no instrument-specific branches needed."""
+    _data_path, label_path = find_pds4_product(TMC2_PRODUCT)
+    meta = parse_pds4_label(label_path)
+
+    assert meta.sun_azimuth == pytest.approx(144.281139, abs=1e-3)
+    assert meta.sun_elevation == pytest.approx(11.540438, abs=1e-3)
+    assert meta.shape == (185749, 4000)
+    assert meta.gsd == pytest.approx(6.16, rel=0.2)
