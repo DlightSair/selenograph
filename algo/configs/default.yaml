@@ -37,7 +37,7 @@ anms:
 geometry:
   transform: homography     # homography | affine | dtm_orthorectify
   ransac: magsac            # magsac | ransac
-  reproj_threshold_px: 1.0
+  reproj_threshold_px: 3.0  # 1.0 was unrealistically strict for a coarse (~68m/px) pyramid level; see CLAUDE.md
 
 evaluation:
   output_dir: ../data/results/
