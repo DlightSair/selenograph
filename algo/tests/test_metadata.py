@@ -1,7 +1,8 @@
-"""Stage 0 tests against real PDS4 products: a TMC-2 DTM (data/dem/tycho/) and
-an OHRC image (data/raw/chandrayaan2/ohrc/, South Pole footprint, set aside as
-a non-Tycho test case) -- confirms the label parser generalizes across
-instruments without instrument-specific code."""
+"""Stage 0 tests against real PDS4 products: a TMC-2 DTM (data/dem/tycho/), an
+OHRC image and a TMC-2 image set aside as non-Tycho test cases (South/North
+Pole footprints -- confirm the label parser generalizes across instruments
+with no instrument-specific code), and the TMC-2 Calibrated image that
+actually matches the Tycho DTM (same orbit, 19674)."""
 
 from pathlib import Path
 
@@ -13,11 +14,17 @@ from algo.utils.io import find_pds4_product
 DATA_ROOT = Path(__file__).parents[2] / "data"
 DTM_PRODUCT = DATA_ROOT / "dem" / "tycho" / "ch2_tmc_ndn_20240124T0838058678_d_dtm_d18"
 OHRC_PRODUCT = DATA_ROOT / "raw" / "chandrayaan2" / "ohrc" / "ch2_ohr_ncp_20241115T1525004388_d_img_d18"
-TMC2_PRODUCT = DATA_ROOT / "raw" / "chandrayaan2" / "tmc2" / "ch2_tmc_ncf_20230127T1218474820_d_img_d32"
+TMC2_NORTH_PRODUCT = DATA_ROOT / "raw" / "chandrayaan2" / "tmc2" / "ch2_tmc_ncf_20230127T1218474820_d_img_d32"
+TMC2_TYCHO_PRODUCT = DATA_ROOT / "raw" / "chandrayaan2" / "tmc2" / "ch2_tmc_ncn_20240124T0838058678_d_img_d18"
 
 skip_without_dtm = pytest.mark.skipif(not DTM_PRODUCT.exists(), reason="sample DTM product not present")
 skip_without_ohrc = pytest.mark.skipif(not OHRC_PRODUCT.exists(), reason="sample OHRC product not present")
-skip_without_tmc2 = pytest.mark.skipif(not TMC2_PRODUCT.exists(), reason="sample TMC-2 image product not present")
+skip_without_tmc2_north = pytest.mark.skipif(
+    not TMC2_NORTH_PRODUCT.exists(), reason="sample North Pole TMC-2 product not present"
+)
+skip_without_tmc2_tycho = pytest.mark.skipif(
+    not TMC2_TYCHO_PRODUCT.exists(), reason="Tycho-matching TMC-2 source product not present"
+)
 
 
 @skip_without_dtm
@@ -81,14 +88,29 @@ def test_parse_pds4_label_on_ohrc_product():
     assert meta.gsd == pytest.approx(0.24, rel=0.2)
 
 
-@skip_without_tmc2
+@skip_without_tmc2_north
 def test_parse_pds4_label_on_tmc2_product():
     """A third real product (Calibrated TMC-2, North Pole footprint) -- same
     parser, no instrument-specific branches needed."""
-    _data_path, label_path = find_pds4_product(TMC2_PRODUCT)
+    _data_path, label_path = find_pds4_product(TMC2_NORTH_PRODUCT)
     meta = parse_pds4_label(label_path)
 
     assert meta.sun_azimuth == pytest.approx(144.281139, abs=1e-3)
     assert meta.sun_elevation == pytest.approx(11.540438, abs=1e-3)
     assert meta.shape == (185749, 4000)
     assert meta.gsd == pytest.approx(6.16, rel=0.2)
+
+
+@skip_without_tmc2_tycho
+def test_tmc2_tycho_product_matches_the_dtm_orbit_and_covers_tycho():
+    """The active source image: same orbit (19674) and sun angle as the Tycho
+    DTM, and its footprint must actually contain Tycho crater."""
+    _data_path, label_path = find_pds4_product(TMC2_TYCHO_PRODUCT)
+    meta = parse_pds4_label(label_path)
+
+    assert meta.sun_azimuth == pytest.approx(43.162789, abs=1e-3)
+    assert meta.sun_elevation == pytest.approx(39.378707, abs=1e-3)
+    lats = [lat for lat, _lon in meta.footprint]
+    lons = [lon for _lat, lon in meta.footprint]
+    assert min(lats) <= -43.3 <= max(lats)
+    assert min(lons) <= 348.64 <= max(lons)

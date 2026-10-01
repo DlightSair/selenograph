@@ -14,11 +14,14 @@ SIH PS 26166 — register Chandrayaan-2 optical imagery (OHRC/TMC-2/IIRS) agains
 - Run: `python -m algo.pipeline --config algo/configs/default.yaml`
 
 ## Status
-Stage 0 (`preprocessing/metadata.py`, `utils/io.py`) implemented and tested against a real TMC-2 DTM product in `data/dem/tycho/`. Every other `algo/` stage is still a stub (`NotImplementedError`). No `ui/` or `desktop/` code yet.
+Stage 0 (`preprocessing/metadata.py`, `utils/io.py`) implemented and runs end-to-end (`load_metadata`) against real source + reference + DEM, all wired through `configs/default.yaml`. Every other `algo/` stage is still a stub (`NotImplementedError`). No `ui/` or `desktop/` code yet.
 
-## Data on disk
-- `data/dem/tycho/` — real TMC-2 Derived DTM (10 m/px elevation), covers Tycho crater AOI. Used as Stage 1/5 DEM input, not a source image.
-- `data/raw/lro_reference/tycho/wac_nac/` — real LRO WAC reference export (PNG+VRT, 86 m/px, orthographic projection), full Tycho crater. This is the reference/fixed image.
-- `data/raw/lro_reference/tycho/catalog/` — QuickMap product-search catalogs (GeoJSON footprints + metadata, no pixel data) for candidate WAC/NAC frames over Tycho; useful for picking a higher-res NAC tile later.
-- `data/raw/chandrayaan2/ohrc/` — a real Calibrated OHRC product (0.24 m/px), but its footprint is the **South Pole**, not Tycho — set aside, not wired into the AOI. Confirms `parse_pds4_label` generalizes across instruments (tested against both this and the DTM).
-- Still needed: a Calibrated **source** image (OHRC or TMC-2) from ISSDC chmapbrowse that actually covers Tycho — see `algo/scripts/download_chandrayaan2.py`.
+## Data on disk — Tycho AOI, all three slots real
+- **Source** `data/raw/chandrayaan2/tmc2/ch2_tmc_ncn_20240124T0838058678_d_img_d18/` — Calibrated TMC-2 image, orbit 19674, 4.2 m/px. This is the exact companion image the Tycho DTM below was derived from (same orbit, same sun angle) — found by matching orbit/timestamp after two off-AOI (polar) downloads turned up no Tycho coverage via direct AOI search.
+- **Reference** `data/raw/lro_reference/tycho/wac_nac/` — real LRO WAC export (PNG+VRT, 86 m/px, orthographic projection).
+- **DEM** `data/dem/tycho/` — real TMC-2 Derived DTM (10 m/px elevation).
+- Scale ratio source/reference ≈ 20×.
+- Set aside, not wired in (different AOIs, kept for reference): `data/raw/chandrayaan2/ohrc/` (Calibrated OHRC, South Pole) and `data/raw/chandrayaan2/tmc2/ch2_tmc_ncf_.../` (Calibrated TMC-2, North Pole). Both still useful — they validated `parse_pds4_label` generalizes across instruments with zero instrument-specific code.
+- `data/raw/lro_reference/tycho/catalog/` — QuickMap product-search catalogs (GeoJSON, no pixel data), useful for picking a higher-res NAC tile later.
+
+Lesson for next AOI: ISSDC's Calibrated-product catalog skews toward landing-site targets (poles); a Derived DTM's label records the `imaging_orbit_number` of the Calibrated image it was built from, so search by that orbit/timestamp rather than by AOI box alone.

@@ -2,15 +2,15 @@
 
 aoi:
   name: tycho_crater
-  lat_min: -43.45
-  lat_max: -43.25
-  lon_min: 348.55
-  lon_max: 348.85
+  lat_min: -44.70
+  lat_max: -41.89
+  lon_min: 346.85
+  lon_max: 350.72
 
 source:
   instrument: TMC2          # TMC2 | OHRC | IIRS
   product_type: calibrated  # raw | calibrated | derived_dtm | derived_ortho
-  path: ../data/raw/chandrayaan2/
+  path: ../data/raw/chandrayaan2/tmc2/ch2_tmc_ncn_20240124T0838058678_d_img_d18
 
 reference:
   provider: lro_quickmap
