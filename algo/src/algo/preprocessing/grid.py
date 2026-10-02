@@ -15,6 +15,7 @@ truth for registration.
 from __future__ import annotations
 
 import csv
+import math
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -109,6 +110,45 @@ def _nearest_lonlat(grid: ControlGrid, line: int, sample: int) -> tuple[float, f
     return grid.lons[idx], grid.lats[idx]
 
 
+def _project_wrap_safe(
+    transformer: pyproj.Transformer, reference_crs, lon: float, lat: float, anchor_x: float, anchor_y: float
+):
+    """lon/lat -> the reference CRS's (x, y), robust to a longitude-wraparound
+    mismatch: pyproj's CRS-to-CRS transform always normalizes longitude to
+    (-180, 180] before applying the target CRS's projection formula --
+    re-feeding it lon+-360 makes no difference, PROJ collapses them to the
+    same normalized value internally. But some planetary equirectangular
+    products (e.g. a LROC NAC ROI mosaic, verified on the real Tycho data)
+    were built from *unwrapped* (always-increasing 0-360) longitude, so the
+    wrapped and unwrapped results land a full lunar circumference apart
+    (~8,000 km) in the projected CRS -- there's no way to get PROJ's own
+    transform to produce the unwrapped branch.
+
+    For an Equirectangular CRS specifically (`+proj=eqc`), apply the
+    textbook forward formula ourselves with the longitude exactly as given
+    (no normalization), using the CRS's own parameters so this isn't
+    hardcoded to one dataset. Whichever of PROJ's result or this manual one
+    lands closer to a known-good anchor in that CRS (the reference raster's
+    own upper-left corner) is kept -- so a reference CRS using the standard
+    wrapped convention (verified fine on the older WAC reference) is
+    unaffected."""
+    candidates = [transformer.transform(lon, lat)]
+
+    params = reference_crs.to_dict()
+    if params.get("proj") == "eqc":
+        radius = params.get("R", MOON_RADIUS_M)
+        lat_ts = math.radians(params.get("lat_ts", 0.0))
+        lon_0 = params.get("lon_0", 0.0)
+        lat_0 = params.get("lat_0", 0.0)
+        x_0 = params.get("x_0", 0.0)
+        y_0 = params.get("y_0", 0.0)
+        x = radius * math.radians(lon - lon_0) * math.cos(lat_ts) + x_0
+        y = radius * math.radians(lat - lat_0) + y_0
+        candidates.append((x, y))
+
+    return min(candidates, key=lambda xy: (xy[0] - anchor_x) ** 2 + (xy[1] - anchor_y) ** 2)
+
+
 def reference_window_for_source_window(
     grid: ControlGrid,
     source_window: tuple[int, int, int, int],
@@ -124,11 +164,12 @@ def reference_window_for_source_window(
     otherwise overlap very little, which starves the matcher."""
     row_start, row_stop, col_start, col_stop = source_window
     transformer = pyproj.Transformer.from_crs(_MOON_GEOGRAPHIC, reference_crs, always_xy=True)
+    anchor_x, anchor_y = reference_transform.c, reference_transform.f
 
     ref_rows, ref_cols = [], []
     for row, col in ((row_start, col_start), (row_start, col_stop), (row_stop, col_start), (row_stop, col_stop)):
         lon, lat = _nearest_lonlat(grid, row, col)
-        x, y = transformer.transform(lon, lat)
+        x, y = _project_wrap_safe(transformer, reference_crs, lon, lat, anchor_x, anchor_y)
         ref_row, ref_col = rowcol(reference_transform, x, y)
         ref_rows.append(ref_row)
         ref_cols.append(ref_col)
@@ -142,8 +183,11 @@ def reference_window_for_source_window(
 
 
 def crop_reference_to_window(reference_path: str | Path, window: tuple[int, int, int, int]) -> np.ndarray:
-    """Windowed read of the reference raster's RGB bands, averaged to
-    grayscale, over a (row_start, row_stop, col_start, col_stop) window."""
+    """Windowed read of the reference raster, averaged to grayscale, over a
+    (row_start, row_stop, col_start, col_stop) window. Reads up to 3 bands --
+    RGB exports (e.g. QuickMap's WAC PNG) average down to grayscale, a
+    single-band grayscale source (e.g. a LROC NAC mosaic GeoTIFF) is a
+    no-op average over its own one band."""
     row_start, row_stop, col_start, col_stop = window
     with rasterio.open(reference_path) as ds:
         row_stop = min(row_stop, ds.height)
@@ -151,5 +195,6 @@ def crop_reference_to_window(reference_path: str | Path, window: tuple[int, int,
         row_start = max(row_start, 0)
         col_start = max(col_start, 0)
         rio_window = Window(col_start, row_start, col_stop - col_start, row_stop - row_start)
-        bands = ds.read([1, 2, 3], window=rio_window)
+        band_count = min(ds.count, 3)
+        bands = ds.read(list(range(1, band_count + 1)), window=rio_window)
     return bands.mean(axis=0)

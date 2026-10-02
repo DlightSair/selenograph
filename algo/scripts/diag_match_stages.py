@@ -1,13 +1,17 @@
 """Diagnostic: instrument pipeline.run()'s internals to see how many
 candidate matches survive each stage (crater matching, relief weighting,
 consistency boost, ANMS, first MAGSAC fit, refine/densify, second MAGSAC
-fit). Not part of the pipeline -- a trace for tuning the accuracy-
-improvement stages added on top of the real end-to-end run. See CLAUDE.md.
+fit) and how long each stage takes. Not part of the pipeline -- a trace for
+tuning the accuracy-improvement stages added on top of the real end-to-end
+run. See CLAUDE.md.
 
-Usage: python scripts/_diag_stages.py
+Usage: python -u scripts/diag_match_stages.py   (-u so timing prints show up
+immediately instead of waiting for Python's full-buffering on a redirected
+stdout to flush)
 """
 
 import sys
+import time
 from pathlib import Path
 
 import numpy as np
@@ -33,6 +37,13 @@ from algo.preprocessing.metadata import load_metadata
 from algo.preprocessing.relief import apply_relief_risk_weighting
 from algo.pyramid.coarse_to_fine import align_coarse_to_fine
 
+_start = time.time()
+
+
+def _mark(label: str) -> None:
+    print(f"[{time.time() - _start:7.1f}s] {label}", flush=True)
+
+
 ROOT = Path(__file__).parents[1]
 with open(ROOT / "configs" / "default.yaml") as f:
     config = yaml.safe_load(f)
@@ -43,32 +54,41 @@ aoi = config["aoi"]
 source_crop, source_window = crop_source_to_aoi(
     label_path, grid_csv, aoi["lat_min"], aoi["lat_max"], aoi["lon_min"], aoi["lon_max"]
 )
+_mark(f"source cropped: {source_crop.shape}")
+
 grid = load_geometry_grid(grid_csv)
 with rasterio.open(config["reference"]["path"]) as ds:
     reference_transform, reference_crs = ds.transform, ds.crs
 reference_window = reference_window_for_source_window(grid, source_window, reference_transform, reference_crs)
 reference_crop = crop_reference_to_window(config["reference"]["path"], reference_window)
 reference_row_offset, reference_col_offset = reference_window[0], reference_window[2]
+_mark(f"reference cropped: {reference_crop.shape}")
 
 levels = align_coarse_to_fine(
     source_crop.astype(np.float64), reference_crop, source_meta.gsd, reference_meta.gsd, config["pyramid"]
 )
-print(f"levels: {len(levels)} -> gsds={[round(l.level_gsd, 1) for l in levels]}")
+_mark(f"levels: {len(levels)} -> gsds={[round(l.level_gsd, 1) for l in levels]}")
 
 matches = []
 for li, level in enumerate(levels):
+    _mark(f"level {li} start (gsd={level.level_gsd:.1f}m, tile={level.source_tile.shape}/{level.reference_tile.shape})")
+
     try:
         learned = match_learned(level, config["matching"])
-    except NotImplementedError:
+    except NotImplementedError as e:
         learned = []
+        _mark(f"  learned skipped: {e}")
+    _mark(f"  learned done: {len(learned)}")
+
     threshold = config["matching"]["confidence_threshold"]
     kept_learned = [m for m in learned if m.confidence >= threshold]
     classical = []
     if len(kept_learned) < len(learned) or not learned:
         classical = match_classical(level, config["matching"])
+    _mark(f"  classical done: {len(classical)} (kept_learned={len(kept_learned)})")
+
     crater = match_crater(level, config["matching"])
-    print(f"level {li} (gsd={level.level_gsd:.1f}m, tile={level.source_tile.shape}/{level.reference_tile.shape}): "
-          f"learned={len(learned)} kept_learned={len(kept_learned)} classical={len(classical)} crater={len(crater)}")
+    _mark(f"  crater done: {len(crater)}")
 
     level_matches = kept_learned + classical + crater
     for m in level_matches:
@@ -83,28 +103,28 @@ for li, level in enumerate(levels):
             )
         )
 
-print(f"\ntotal candidate matches: {len(matches)}")
+_mark(f"total candidate matches: {len(matches)}")
 
 dem_cfg = config.get("dem", {})
 if dem_cfg.get("enabled"):
     matches = apply_relief_risk_weighting(matches, reference_transform, reference_crs, dem_cfg["path"])
-    print(f"after relief weighting: {len(matches)} (confidences adjusted, not filtered)")
+    _mark(f"after relief weighting: {len(matches)}")
 
 before_consistency = len(matches)
 matches = boost_by_global_consistency(matches)
-print(f"after consistency boost: {len(matches)} (was {before_consistency})")
+_mark(f"after consistency boost: {len(matches)} (was {before_consistency})")
 
 matches = enforce_uniform_distribution(matches, config["anms"])
-print(f"after ANMS: {len(matches)}")
+_mark(f"after ANMS: {len(matches)}")
 
 transform, inliers = fit_transform(matches, config["geometry"])
-print(f"first MAGSAC fit: {len(inliers)} inliers / {len(matches)} candidates")
+_mark(f"first MAGSAC fit: {len(inliers)} inliers / {len(matches)} candidates")
 
 if transform is not None and len(inliers) >= 4:
     refined_matches = refine_and_densify(
         inliers, source_crop, reference_crop, transform, source_meta.gsd, reference_meta.gsd,
         reference_row_offset, reference_col_offset,
     )
-    print(f"refine_and_densify: {len(refined_matches)} points (from {len(inliers)} inliers)")
+    _mark(f"refine_and_densify: {len(refined_matches)} points (from {len(inliers)} inliers)")
     refined_transform, refined_inliers = fit_transform(refined_matches, config["geometry"])
-    print(f"second MAGSAC fit: {len(refined_inliers)} inliers / {len(refined_matches)} candidates")
+    _mark(f"second MAGSAC fit: {len(refined_inliers)} inliers / {len(refined_matches)} candidates")

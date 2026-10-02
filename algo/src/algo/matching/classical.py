@@ -12,15 +12,23 @@ from __future__ import annotations
 import cv2
 import numpy as np
 
+from algo.matching._tiling import downsample_for_matching
 from algo.matching.learned import Match
 from algo.preprocessing.illumination import normalize_illumination
 
 _ORB_FEATURES = 4000
 _LOWE_RATIO = 0.75
+_MAX_TILE_PIXELS = 1_000_000  # see matching/_tiling.py's docstring -- tried raising to 3M on the
+# real Tycho run and it was *worse* (6 inliers vs 16, and 2x slower): more native resolution
+# surfaces more fine-scale repetitive crater texture, which is the self-similarity problem this
+# whole project is fighting, not free detail. 1M was the better trade-off, not just the faster one.
 
 
 def match_classical(level, matching_cfg) -> list[Match]:
-    source_struct, reference_struct = normalize_illumination(level.source_tile, level.reference_tile)
+    source_small, source_factor = downsample_for_matching(level.source_tile, _MAX_TILE_PIXELS)
+    reference_small, reference_factor = downsample_for_matching(level.reference_tile, _MAX_TILE_PIXELS)
+
+    source_struct, reference_struct = normalize_illumination(source_small, reference_small)
     source_8u = (source_struct * 255).astype(np.uint8)
     reference_8u = (reference_struct * 255).astype(np.uint8)
 
@@ -40,7 +48,11 @@ def match_classical(level, matching_cfg) -> list[Match]:
         m, n = pair
         if m.distance < _LOWE_RATIO * n.distance:
             confidence = 1.0 - (m.distance / 256.0)
-            matches.append(Match(kp_s[m.queryIdx].pt, kp_r[m.trainIdx].pt, confidence))
+            sx, sy = kp_s[m.queryIdx].pt
+            rx, ry = kp_r[m.trainIdx].pt
+            source_xy = (sx * source_factor, sy * source_factor)
+            reference_xy = (rx * reference_factor, ry * reference_factor)
+            matches.append(Match(source_xy, reference_xy, confidence))
 
     return matches
 

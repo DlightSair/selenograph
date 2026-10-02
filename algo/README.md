@@ -21,7 +21,7 @@ python scripts/download_loftr_weights.py   # ~46MB; kornia's own download URL is
 pytest tests/ -v
 ```
 
-`test_metadata.py` and `test_pipeline.py::test_run_end_to_end` run against the real Tycho source/reference/DEM data under `../data/` — skipped automatically if that data isn't present. `test_run_end_to_end` is slow (~1 min: windowed-reads a 1.7GB source file, runs LoFTR + ORB matching).
+`test_metadata.py` and `test_pipeline.py::test_run_end_to_end` run against the real Tycho source/reference/DEM data under `../data/` — skipped automatically if that data isn't present. `test_run_end_to_end` is slow (several minutes since the reference-data swap to a near-native-resolution NAC mosaic — see CLAUDE.md's "Reference data swap" — windowed-reads a 1.7GB source file and runs classical/crater matching at close to full resolution, not just LoFTR).
 
 ## Layout
 

@@ -40,6 +40,7 @@ from scipy.ndimage import gaussian_filter
 from skimage.exposure import equalize_adapthist
 from skimage.feature import peak_local_max
 
+from algo.matching._tiling import downsample_for_matching
 from algo.matching.learned import Match
 
 _NUM_NEIGHBORS = 4  # constellation size: self + 4 nearest neighbours
@@ -47,6 +48,8 @@ _RATIO_TEST = 0.85
 _NUM_PEAKS = 40  # per polarity (bright + dark), per tile
 _MIN_DISTANCE = 8  # px, minimum separation between detected peaks
 _SMOOTH_SIGMA = 2  # px, Gaussian pre-smoothing so peaks are crater-scale, not pixel noise
+_MAX_TILE_PIXELS = 1_000_000  # see matching/_tiling.py's docstring and classical.py's same constant
+# -- empirically the better trade-off on the real Tycho run, not just the faster one.
 
 
 def _detect_blobs(tile: np.ndarray, cfg: dict) -> np.ndarray:
@@ -104,8 +107,15 @@ def _constellation_signatures(blobs: np.ndarray) -> tuple[np.ndarray, np.ndarray
 
 def match_crater(level, matching_cfg) -> list[Match]:
     cfg = matching_cfg.get("crater", {})
-    source_blobs = _detect_blobs(level.source_tile, cfg)
-    reference_blobs = _detect_blobs(level.reference_tile, cfg)
+    source_small, source_factor = downsample_for_matching(level.source_tile, _MAX_TILE_PIXELS)
+    reference_small, reference_factor = downsample_for_matching(level.reference_tile, _MAX_TILE_PIXELS)
+
+    source_blobs = _detect_blobs(source_small, cfg)
+    reference_blobs = _detect_blobs(reference_small, cfg)
+    if len(source_blobs):
+        source_blobs[:, :2] *= source_factor
+    if len(reference_blobs):
+        reference_blobs[:, :2] *= reference_factor
 
     src_centers, src_sigs = _constellation_signatures(source_blobs)
     ref_centers, ref_sigs = _constellation_signatures(reference_blobs)

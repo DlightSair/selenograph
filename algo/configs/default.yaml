@@ -2,10 +2,13 @@
 
 aoi:
   name: tycho_crater
-  lat_min: -44.70
-  lat_max: -41.89
-  lon_min: 346.85
-  lon_max: 350.72
+  # Narrowed to the NAC mosaic's own coverage (lon 348.17-349.65, lat -43.70 to -42.30) plus a
+  # small margin, rather than the full original AOI -- the WAC-era AOI extended well beyond
+  # where any reference data at useful resolution actually exists. See CLAUDE.md.
+  lat_min: -43.85
+  lat_max: -42.15
+  lon_min: 348.00
+  lon_max: 349.80
 
 source:
   instrument: TMC2          # TMC2 | OHRC | IIRS
@@ -13,9 +16,9 @@ source:
   path: ../data/raw/chandrayaan2/tmc2/ch2_tmc_ncn_20240124T0838058678_d_img_d18
 
 reference:
-  provider: lro_quickmap
-  layer: WAC+NAC+NAC_ROI_MOSAIC
-  path: ../data/raw/lro_reference/tycho/wac_nac/quickmap-lroc.vrt
+  provider: lroc_nac_roi_mosaic
+  layer: NAC_ROI_TYCHOCTRLOA_E430S3489_5M   # controlled NAC mosaic, 5.00 m/px -- see CLAUDE.md
+  path: ../data/raw/lro_reference/tycho/nac/NAC_ROI_TYCHOCTRLOA_E430S3489_5M.TIF
 
 dem:
   enabled: true

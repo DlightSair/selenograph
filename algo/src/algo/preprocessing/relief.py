@@ -69,6 +69,12 @@ def apply_relief_risk_weighting(matches: list, reference_transform, reference_cr
         for m in matches:
             x, y = reference_transform @ m.reference_xy
             lon, lat = to_moon.transform(x, y)
+            # pyproj's geographic output is conventionally (-180, 180], but every longitude
+            # elsewhere in this codebase (AOI config, the ground-control grid, this DEM's own
+            # bounds) is 0-360 -- normalizing here is what makes DEM coverage actually match
+            # (verified on real data: without this, every lookup missed the DEM entirely and
+            # relief weighting was silently a no-op).
+            lon = lon % 360
             row, col = rowcol(dem_transform, lon, lat)
             row, col = int(row), int(col)
 
