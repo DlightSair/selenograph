@@ -61,7 +61,6 @@ class TileMatch:
     source_xy: tuple[float, float]  # source-crop coords (stage resolution)
     reference_xy: tuple[float, float]  # reference-crop-local coords (stage resolution)
     ncc: float
-    margin_ratio: float  # ncc - second-best-peak ncc
     shift: tuple[float, float]  # residual shift, reference-crop px
 
 
@@ -266,7 +265,6 @@ def _tile_pass(src: np.ndarray, layers: list[RefLayer], H: np.ndarray, st: Stage
     inv = np.linalg.inv(H)
     if lat is not None:
         lat_x, lat_y = np.ascontiguousarray(lat[..., 0]), np.ascontiguousarray(lat[..., 1])
-    rad = max(4, T // 24)
     nsig = max(6.0, 0.03 * T)
     out: list[TileMatch] = []
     attempted = 0
@@ -332,14 +330,11 @@ def _tile_pass(src: np.ndarray, layers: list[RefLayer], H: np.ndarray, st: Stage
         _, p1, _, (px, py) = cv2.minMaxLoc(res)
         if p1 < min_ncc:
             return 1, None
-        masked = res.copy()
-        masked[max(0, py - rad):py + rad + 1, max(0, px - rad):px + rad + 1] = -1
-        p2 = float(masked.max())
         fx, fy = _subpixel(res, px, py)
         dx, dy = wx0 + fx - x0, wy0 + fy - y0
         cx, cy = x0 + T / 2, y0 + T / 2
         source_xy = apply_homography(inv, np.array([[cx, cy]]))[0] if lat is None else _lat_sample(lat, cx, cy)
-        return 1, TileMatch(tuple(source_xy), (cx + dx, cy + dy), float(p1), float(p1 - p2), (dx, dy))
+        return 1, TileMatch(tuple(source_xy), (cx + dx, cy + dy), float(p1), (dx, dy))
 
     positions = [(x0, y0) for y0 in range(max(0, ymin), min(h - T, ymax - T) + 1, stride)
                  for x0 in range(max(0, xmin), min(w - T, xmax - T) + 1, stride)]
@@ -804,7 +799,7 @@ def match_prior_guided(
             mdl, _ = fit_full_model(
                 src_full, ref_full, conf, in_mask, reference_gsd, (full_w, full_h), dem=dem, expected_view=expected_view,
                 use_nonrigid=bool(cfg.get("nonrigid", True)), use_parallax=bool(cfg.get("parallax", True)),
-                cell=max(48.0, st.stride * b), thr_base=fit_thr, loose=fit_thr, iterations=1, seed_H=Hn,
+                cell=max(48.0, st.stride * b), thr_base=fit_thr, loose=fit_thr, iterations=1,
                 dem_smooth_px=0.3 * st.tile * b, parallax_prior=parallax_prior,
             )
             if mdl is not None:

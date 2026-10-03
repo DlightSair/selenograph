@@ -70,9 +70,7 @@ The app does not ship imagery. A project needs a source product and a reference 
 | Reference | LRO NAC / WAC mosaics (georeferenced GeoTIFF) | [LROC QuickMap](https://quickmap.lroc.im-ldi.com/), [NASA Moon Trek](https://trek.nasa.gov/moon/), [LROC archive](https://wms.lroc.asu.edu/lroc/rdr_product_select) |
 | DEM (optional) | LOLA elevation models | [global 118 m](https://planetarymaps.usgs.gov/mosaic/Lunar_LRO_LOLA_Global_LDEM_118m_Mar2014.tif), [south polar 20 m](https://pgda.gsfc.nasa.gov/data/LOLA_20mpp/LDEM_80S_20MPP_ADJ.TIF) |
 
-Helper scripts in `algo/scripts/` download and window this data: `download_chandrayaan2.py`,
-`download_lro_reference.py`, `fetch_wac_reference.py`, `fetch_trek_polar_nac.py`, `fetch_lola_dem_window.py`
-and `fetch_lola_global_window.py`. Downloaded data lives under `data/` and is not committed.
+Keep downloaded data under `data/`, which is not committed.
 
 ## How it works
 
@@ -201,7 +199,6 @@ algo/
     api/             local FastAPI server, plots, previews
     benchmark/       synthetic benchmark
   configs/           project configuration template
-  scripts/           data download helpers, batch runner
   tests/
 desktop/             Flutter app
 build_pkg/           release packaging script

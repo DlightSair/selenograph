@@ -48,7 +48,6 @@ class AoiContext:
     source_to_full: np.ndarray = field(default_factory=lambda: np.eye(3))  # source_crop px -> full-res crop px
     source_meta: ImageMetadata | None = None
     reference_meta: ImageMetadata | None = None
-    grid_is_synthetic: bool = False
     relit: np.ndarray | None = None  # DEM lit by the source's Sun, on the reference crop grid
     dem: np.ndarray | None = None  # DEM heights (m) on the reference crop grid, NaN where unknown
 
@@ -104,7 +103,7 @@ def load_aoi_context(config: dict, decimation: int | str = "auto", with_relit: b
         source_crop, reference_crop, int(reference_window[0]), int(reference_window[2]),
         source_window, grid, reference_transform, reference_crs,
         source_to_full=decimation_matrix(source_window, source_crop.shape),
-        source_meta=source_meta, reference_meta=reference_meta, grid_is_synthetic=synthetic_grid,
+        source_meta=source_meta, reference_meta=reference_meta,
     )
     if with_relit:
         ctx.relit = load_relit_layer(config, ctx)

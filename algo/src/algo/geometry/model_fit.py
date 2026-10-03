@@ -35,7 +35,6 @@ def fit_full_model(
     thr_base: float = 1.0,
     loose: float = 3.0,
     iterations: int = 3,
-    seed_H: np.ndarray | None = None,
     dem_smooth_px: float = 0.0,
     parallax_prior: tuple[float, float] | None = None,
     alpha_tol: float = 0.10,

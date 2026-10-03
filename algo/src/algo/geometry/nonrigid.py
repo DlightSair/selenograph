@@ -45,10 +45,6 @@ class NonRigidModel:
     field_fn: Callable[[np.ndarray], np.ndarray] | None = None
     info: dict = field(default_factory=dict)
 
-    @property
-    def rigid_only(self) -> bool:
-        return self.field_fn is None
-
     # -- forward --------------------------------------------------------------------------------
     def displacement(self, p: np.ndarray) -> np.ndarray:
         p = np.asarray(p, dtype=np.float64).reshape(-1, 2)
@@ -160,7 +156,6 @@ def fit_nonrigid(
     min_gain: float = 0.08,
     min_abs_gain_px: float = 0.05,
     max_nodes: int = 2500,
-    rng_seed: int = 0,
 ) -> NonRigidModel:
     """Fit `d(p)` to the residuals of the homography `H` over tile matches and keep it only if a
     blocked cross-validation shows it predicts held-out residuals better than `H` alone.

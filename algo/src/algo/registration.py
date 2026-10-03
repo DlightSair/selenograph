@@ -91,7 +91,7 @@ def register(
     model, keep = fit_full_model(
         src, ref, conf, keep, reference_gsd, _source_size(source), dem=dem, expected_view=expected_view,
         use_nonrigid=bool(cfg.get("nonrigid", True)), use_parallax=bool(cfg.get("parallax", True)),
-        cell=float(cfg.get("nonrigid_cell_px", 48.0)), thr_base=thr, loose=loose, seed_H=Hn,
+        cell=float(cfg.get("nonrigid_cell_px", 48.0)), thr_base=thr, loose=loose,
         dem_smooth_px=float(cfg.get("parallax_smooth_final", 0.3)) * last_tile_ref_px,
         alpha_tol=float(cfg.get("parallax_alpha_tol", 0.10)), parallax_prior=tuple(info["parallax_prior"]) if info.get("parallax_prior") else None,
     )

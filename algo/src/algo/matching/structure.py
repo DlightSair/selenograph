@@ -13,7 +13,7 @@ the same way, so they can be swapped or fused per scene:
   cfog       channel features of oriented gradients (Ye et al. 2019): |directional
              derivative| in K orientations, smoothed -- polarity-invariant like
              `orient` but retains more than the dominant direction.
-  edges      gradient magnitude only (the old experiment; kept for comparison).
+  edges      log-compressed gradient magnitude: polarity-invariant, one channel.
 
 `joint_ncc` is zero-mean normalised cross-correlation summed over channels
 (for one channel it equals OpenCV's TM_CCOEFF_NORMED), so its value is directly
@@ -25,7 +25,6 @@ from __future__ import annotations
 import cv2
 import numpy as np
 
-MODES = ("intensity", "orient", "cfog", "edges", "gmag", "dogabs", "logabs")  # any may carry "@sigma"
 _EPS = 1e-6
 
 
@@ -66,15 +65,7 @@ def _features(img: np.ndarray, mode: str, smooth: float, bins: int, norm_sigma: 
         smooth = float(s)
     if mode == "intensity":
         return local_normalize(img, norm_sigma)[..., None]
-    if mode == "dogabs":  # |band-pass|: responds to rims/blobs of either polarity
-        x = local_normalize(img, norm_sigma)
-        return np.abs(cv2.GaussianBlur(x, (0, 0), smooth) - cv2.GaussianBlur(x, (0, 0), 2.0 * smooth))[..., None]
-    if mode == "logabs":  # |Laplacian of Gaussian|
-        x = cv2.GaussianBlur(local_normalize(img, norm_sigma), (0, 0), smooth)
-        return np.abs(cv2.Laplacian(x, cv2.CV_32F, ksize=3))[..., None]
     gx, gy = _gradients(img, smooth, norm_sigma)
-    if mode == "gmag":  # gradient magnitude without the log compression
-        return cv2.magnitude(gx, gy)[..., None]
     if mode == "edges":
         return np.log1p(cv2.magnitude(gx, gy))[..., None]
     if mode == "orient":
