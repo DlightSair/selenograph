@@ -25,6 +25,16 @@ enum ServerLaunchResult {
 /// instead of silently swallowed.
 class ServerLauncher {
   static bool _attempted = false;
+  static Process? _bundledProcess;
+
+  /// The packaged service (server/selenograph-server.exe next to the app), if this is a packaged build.
+  static File get bundledServer => File(
+        '${File(Platform.resolvedExecutable).parent.path}${Platform.pathSeparator}server${Platform.pathSeparator}selenograph-server.exe',
+      );
+  static bool get hasBundled => Platform.isWindows && bundledServer.existsSync();
+
+  /// Where the packaged service is listening, once started.
+  static String? baseUrl;
 
   /// Non-Windows only: where the launched process's stdout/stderr are being
   /// logged (Windows gets a live console window instead, see above).
@@ -40,19 +50,24 @@ class ServerLauncher {
     if (_attempted && !force) return ServerLaunchResult.alreadyAttempted;
     _attempted = true;
 
-    // Packaged build: the registration service ships next to the app (server/selenograph-server.exe)
-    // and needs no Python.
-    final bundled = File(
-      '${File(Platform.resolvedExecutable).parent.path}${Platform.pathSeparator}server${Platform.pathSeparator}selenograph-server.exe',
-    );
-    if (Platform.isWindows && bundled.existsSync()) {
+    // Packaged build: the registration service ships next to the app and needs no Python. It listens on a
+    // free port of its own (never a fixed one another program might use), runs without a window, and exits
+    // when this app does.
+    if (Platform.isWindows && bundledServer.existsSync()) {
       try {
-        await Process.start(
-          'cmd',
-          ['/c', 'start', '/min', 'Selenograph service', bundled.path],
-          workingDirectory: bundled.parent.path,
-          mode: ProcessStartMode.detached,
+        _bundledProcess?.kill();
+        final probe = await ServerSocket.bind(InternetAddress.loopbackIPv4, 0);
+        final port = probe.port;
+        await probe.close();
+        _bundledProcess = await Process.start(
+          bundledServer.path,
+          ['--port', '$port', '--parent-pid', '$pid'],
+          workingDirectory: bundledServer.parent.path,
+          mode: ProcessStartMode.detachedWithStdio,
         );
+        _bundledProcess!.stdout.drain<void>();
+        _bundledProcess!.stderr.drain<void>();
+        baseUrl = 'http://127.0.0.1:$port';
         return ServerLaunchResult.started;
       } catch (_) {
         return ServerLaunchResult.failedToStart;

@@ -25,7 +25,7 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen> {
-  late final ApiClient _api = widget.api ?? ApiClient();
+  late ApiClient _api = widget.api ?? ApiClient();
 
   static const _statusMessages = [
     'Preparing workspace…',
@@ -62,12 +62,20 @@ class _SplashScreenState extends State<SplashScreen> {
       if (mounted) setState(() => _status = _statusMessages[messageIndex]);
     });
 
-    if (await _api.health()) {
-      _proceed();
-      return;
+    // Packaged build: always start our own private service; never trust whatever might already answer on
+    // the default port.
+    final packaged = widget.api == null && widget.launcher == null && ServerLauncher.hasBundled;
+    if (packaged) {
+      await ServerLauncher.ensureStarted(force: true);
+      final url = ServerLauncher.baseUrl;
+      if (url != null) _api = ApiClient(baseUrl: url);
+    } else {
+      if (await _api.health()) {
+        _proceed();
+        return;
+      }
+      await (widget.launcher ?? ServerLauncher.ensureStarted)(force: true);
     }
-
-    await (widget.launcher ?? ServerLauncher.ensureStarted)(force: true);
 
     // About 45 s of polling, counted in attempts rather than wall-clock time.
     for (var attempt = 0; mounted && attempt < 64; attempt++) {

@@ -54,6 +54,7 @@ app.add_middleware(
 
 _run_lock = threading.Lock()
 _BOOT_TIME = datetime.now(timezone.utc)
+_children: list = []  # pipeline subprocesses started by this server (killed if the app goes away)
 _active_runs: set[str] = set()  # runs whose subprocess this server process is watching
 
 
@@ -145,6 +146,8 @@ def _start_run(config_name: str) -> str:
         cwd=ROOT, stdout=log_file, stderr=subprocess.STDOUT,
     )
 
+    _children.append(proc)
+
     def _watch() -> None:
         proc.wait()
         log_file.close()
@@ -169,7 +172,7 @@ def _start_run(config_name: str) -> str:
 
 @app.get("/health")
 def health() -> dict:
-    return {"status": "ok"}
+    return {"status": "ok", "app": "selenograph"}
 
 
 @app.get("/configs")
@@ -396,10 +399,44 @@ def get_visualization_image(run_id: str, name: str):
         raise HTTPException(404, str(e)) from e
 
 
-def main() -> None:
+def _parent_alive(pid: int) -> bool:
+    if os.name != "nt":
+        try:
+            os.kill(pid, 0)
+            return True
+        except OSError:
+            return False
+    import ctypes
+
+    SYNCHRONIZE = 0x00100000
+    handle = ctypes.windll.kernel32.OpenProcess(SYNCHRONIZE, False, pid)
+    if not handle:
+        return False
+    try:
+        return ctypes.windll.kernel32.WaitForSingleObject(handle, 0) == 0x102  # WAIT_TIMEOUT: still running
+    finally:
+        ctypes.windll.kernel32.CloseHandle(handle)
+
+
+def _exit_with_parent(pid: int) -> None:
+    """The packaged server is private to the desktop app: when the app exits (even by crashing) stop any
+    running registration and exit, so nothing is left running in the background."""
+    import time
+
+    while _parent_alive(pid):
+        time.sleep(2)
+    for proc in _children:
+        if proc.poll() is None:
+            proc.kill()
+    os._exit(0)
+
+
+def main(port: int = 8000, parent_pid: int | None = None) -> None:
     import uvicorn
 
-    uvicorn.run(app, host="127.0.0.1", port=8000)
+    if parent_pid:
+        threading.Thread(target=_exit_with_parent, args=(parent_pid,), daemon=True).start()
+    uvicorn.run(app, host="127.0.0.1", port=port, log_level="warning" if FROZEN else "info")
 
 
 if __name__ == "__main__":
