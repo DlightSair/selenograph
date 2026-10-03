@@ -182,7 +182,7 @@ cd ..\desktop
 flutter build windows --release
 ```
 
-Copy `desktop\build\windows\x64\runner\Release\*` into a folder, rename the executable to `Selenograph.exe`,
+Copy `desktop\build\windows\x64\runner\Release\*` into a folder,
 copy `build_pkg\dist\selenograph-server` into it as `server\`, and zip the folder.
 
 ## Repository layout
