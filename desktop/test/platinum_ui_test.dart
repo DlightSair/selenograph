@@ -8,6 +8,7 @@ import 'package:http/testing.dart';
 import 'package:lunar_registration_desktop/screens/about_screen.dart';
 import 'package:lunar_registration_desktop/screens/app_shell.dart';
 import 'package:lunar_registration_desktop/screens/new_project_screen.dart';
+import 'package:lunar_registration_desktop/screens/results_screen.dart';
 import 'package:lunar_registration_desktop/services/api_client.dart';
 import 'package:lunar_registration_desktop/theme/platinum.dart';
 import 'package:lunar_registration_desktop/ui/controls.dart';
@@ -209,6 +210,39 @@ void main() {
       await _settle(tester, frames: 3);
       expect(tester.takeException(), isNull);
       expect(find.text('Supported conditions'), findsOneWidget);
+      await tester.pumpWidget(const SizedBox.shrink());
+    });
+  });
+
+  group('results', () {
+    testWidgets('a run opened while running updates itself when it finishes', (tester) async {
+      _surface(tester);
+      var calls = 0;
+      final api = ApiClient(client: MockClient((req) async {
+        if (req.url.path == '/runs/r1') {
+          calls++;
+          final running = calls < 3;
+          return _json({
+            'run_id': 'r1',
+            'status': running ? 'running' : 'done',
+            'config': 'alpha.yaml',
+            'started_at': '2026-10-02T18:00:00+00:00',
+            'finished_at': running ? null : '2026-10-02T18:00:03+00:00',
+            'stage': running ? 'Matching' : null,
+            'metrics': running ? null : _noFit,
+          });
+        }
+        return _json({'detail': 'not found'}, 404);
+      }));
+      await tester.pumpWidget(_wrap(ResultsScreen(runId: 'r1', api: api)));
+      await tester.pump(const Duration(milliseconds: 200));
+      await tester.pump(const Duration(milliseconds: 200));
+      expect(find.textContaining('Matching'), findsOneWidget);
+      await tester.pump(const Duration(seconds: 2));
+      await tester.pump(const Duration(seconds: 2));
+      await tester.pump(const Duration(milliseconds: 500));
+      expect(find.textContaining('Matching'), findsNothing);
+      expect(calls, greaterThanOrEqualTo(3));
       await tester.pumpWidget(const SizedBox.shrink());
     });
   });

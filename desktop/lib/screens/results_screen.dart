@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -42,10 +44,17 @@ class _ResultsScreenState extends State<ResultsScreen> {
 
   static const double _inspectorWidth = 380;
 
+  Timer? _poll;
+
   @override
   void initState() {
     super.initState();
     _load();
+    // A run opened right after starting is still "running": keep checking until it finishes.
+    _poll = Timer.periodic(const Duration(seconds: 2), (_) {
+      if (_run == null || _run!.isRunning) _load();
+      if (mounted && _run?.isRunning == true) setState(() {}); // elapsed time
+    });
   }
 
   @override
@@ -57,6 +66,7 @@ class _ResultsScreenState extends State<ResultsScreen> {
 
   @override
   void dispose() {
+    _poll?.cancel();
     _app?.registerRefresh(null);
     _inspectorScroll.dispose();
     super.dispose();
@@ -261,7 +271,18 @@ class _ResultsScreenState extends State<ResultsScreen> {
       );
     }
     if (run.isRunning) {
-      return const Panel(title: 'Running', child: Row(children: [Spinner(), SizedBox(width: 8), Text('Pending — the run is still in progress.')]));
+      final started = DateTime.tryParse(run.startedAt ?? '');
+      final secs = started == null ? 0 : DateTime.now().toUtc().difference(started.toUtc()).inSeconds.clamp(0, 1 << 30);
+      final elapsed = '${secs ~/ 60}:${(secs % 60).toString().padLeft(2, '0')}';
+      return Panel(
+        title: 'Running',
+        child: Row(children: [
+          const Spinner(),
+          const SizedBox(width: 8),
+          Text('${run.stage ?? 'Running'}...  '),
+          Text(elapsed, style: mono(size: 12)),
+        ]),
+      );
     }
     final m = run.metrics;
     if (m != null && m.failed) {
