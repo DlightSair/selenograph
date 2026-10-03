@@ -44,7 +44,7 @@ import cv2
 import numpy as np
 from skimage.transform import resize
 
-from algo.matching.learned import Match
+from algo.matching.match import Match
 
 _PATCH_HALF_REF = 3  # template half-size, in REFERENCE pixels (after resampling the source side down to it)
 _SEARCH_HALF_REF = 6  # search-window half-size, in REFERENCE pixels

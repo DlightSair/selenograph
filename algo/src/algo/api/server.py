@@ -251,7 +251,7 @@ def create_config(req: CreateConfigRequest) -> dict:
         "dem": dem_section,
         "pyramid": {"levels": 4, "downsample_factor": 4},
         "matching": {
-            "primary": "loftr",
+            "primary": "classical",
             "fallback": "classical",
             "confidence_threshold": 0.5,
             "crater": {"num_peaks": 40, "min_distance": 8, "smooth_sigma": 2, "ratio_test": 0.75},
@@ -338,7 +338,7 @@ def get_preview(name: str):
 
 @app.post("/runs")
 def create_run(req: RunRequest) -> dict:
-    with _run_lock:  # one run at a time — these are heavy (LoFTR/rasterio), no point racing them
+    with _run_lock:  # one run at a time — these are heavy (rasterio, NCC matching), no point racing them
         run_id = _start_run(req.config)
     return {"run_id": run_id, "status": "running"}
 

@@ -41,7 +41,7 @@ from skimage.exposure import equalize_adapthist
 from skimage.feature import peak_local_max
 
 from algo.matching._tiling import downsample_for_matching
-from algo.matching.learned import Match
+from algo.matching.match import Match
 
 _NUM_NEIGHBORS = 4  # constellation size: self + 4 nearest neighbours
 _RATIO_TEST = 0.85

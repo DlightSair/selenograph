@@ -27,7 +27,7 @@ pyramid:
   downsample_factor: 4
 
 matching:
-  primary: loftr
+  primary: classical
   fallback: classical
   confidence_threshold: 0.5
   crater: {num_peaks: 40, min_distance: 8, smooth_sigma: 2, ratio_test: 0.75}

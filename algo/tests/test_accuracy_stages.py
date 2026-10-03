@@ -9,7 +9,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from algo.matching.learned import Match
+from algo.matching.match import Match
 
 
 def test_crater_constellation_signature_is_scale_rotation_invariant():

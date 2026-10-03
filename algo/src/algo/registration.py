@@ -23,7 +23,7 @@ import numpy as np
 from algo.geometry.analysis import apply_homography
 from algo.geometry.model_fit import fit_full_model
 from algo.geometry.nonrigid import NonRigidModel
-from algo.matching.learned import Match
+from algo.matching.match import Match
 from algo.matching.prior_guided import SourcePyramid, match_prior_guided
 
 

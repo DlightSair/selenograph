@@ -9,9 +9,6 @@ matplotlib              # API visualizations, benchmark charts, diagnostic overl
 rasterio
 pyproj
 
-# deep learning matcher (Stage 3 primary): LoFTR exported to ONNX, no torch needed at run time
-onnxruntime
-
 # config / CLI
 pyyaml
 

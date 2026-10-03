@@ -15,9 +15,6 @@ py -3.11 -m venv .venv
 .venv\Scripts\activate
 pip install -r requirements.txt
 pip install -e .
-# LoFTR runs from models/loftr_*.onnx (gitignored). Build them once (needs torch+kornia, see requirements-export.txt):
-pip install -r requirements-export.txt
-python scripts/export_loftr_onnx.py
 ```
 
 ## Run
@@ -52,11 +49,11 @@ tiles), `scripts/fetch_lola_dem_window.py` (LOLA DEM windows), `scripts/download
 ```
 algo/
 ├── src/algo/
-│   ├── pipeline.py            # orchestration (prior-guided path; blind LoFTR/ORB path kept as `registration.mode: blind`)
+│   ├── pipeline.py            # orchestration (prior-guided path; blind ORB/crater fallback kept as `registration.mode: blind`)
 │   ├── registration.py        # register(): matching -> full model fit -> inliers. Shared with the benchmark
 │   ├── export.py              # registered.tif, tiepoints_geo.csv
 │   ├── preprocessing/         # labels (sun, pixel size, view angles), control grid / label-corner geolocation, decimated reads
-│   ├── matching/              # prior_guided.py (the matcher), structure.py (representations + NCC); legacy: learned/classical/crater
+│   ├── matching/              # prior_guided.py (the matcher), structure.py (representations + NCC); blind fallback: classical/crater
 │   ├── illumination/          # relight.py (DEM -> image at a given Sun), dem.py (DEM on the reference grid)
 │   ├── geometry/              # model_fit.py, nonrigid.py, parallax.py, analysis.py (reliability checks), warp.py
 │   ├── benchmark/             # synthetic ground-truth scenes, runner, suites, report
@@ -84,3 +81,10 @@ python -m algo.benchmark.report                                        # -> data
 python scripts/cross_check.py reference strip_n77e200 strip_n77e200_ce2    # same strip, two independent references
 python scripts/cross_check.py prior strip_n45e10                          # wrong starting guesses
 ```
+
+## Future work
+
+- **Learned matcher (LoFTR):** a pretrained LoFTR was part of the blind fallback and was removed from the MVP because the default
+  `prior_guided` path never used it. A working ONNX export (no torch at run time, verified identical to kornia) is in git history
+  at commit `b604266` (`algo/src/algo/matching/loftr_onnx.py`, `algo/scripts/export_loftr_onnx.py`) if it is wanted again,
+  e.g. for products with no control grid.

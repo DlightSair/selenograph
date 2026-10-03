@@ -24,7 +24,7 @@ pyramid:
   levels: 4
   downsample_factor: 4
 matching:
-  primary: loftr
+  primary: classical
   fallback: classical
   confidence_threshold: 0.5
   crater:

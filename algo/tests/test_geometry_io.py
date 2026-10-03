@@ -12,7 +12,7 @@ from rasterio.transform import from_origin
 
 from algo.export import write_registered_geotiff, write_tiepoints_geo
 from algo.geometry.nonrigid import NonRigidModel
-from algo.matching.learned import Match
+from algo.matching.match import Match
 from algo.preprocessing.grid import decimation_for, decimation_matrix, load_geometry_grid, remove_column_stripes
 
 REPO = Path(__file__).resolve().parents[2]

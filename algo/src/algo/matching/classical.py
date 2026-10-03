@@ -13,7 +13,7 @@ import cv2
 import numpy as np
 
 from algo.matching._tiling import downsample_for_matching
-from algo.matching.learned import Match
+from algo.matching.match import Match
 from algo.preprocessing.illumination import normalize_illumination
 
 _ORB_FEATURES = 4000

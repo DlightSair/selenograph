@@ -116,7 +116,7 @@ by `api/visualization.py` for the desktop app.
 | area | modules |
 |---|---|
 | geolocation, crops, I/O | `preprocessing/grid.py`, `preprocessing/metadata.py`, `api/_crops.py`, `utils/io.py`, `export.py` |
-| matching | `matching/prior_guided.py`, `matching/structure.py` (legacy blind path: `learned.py`, `classical.py`, `crater.py`) |
+| matching | `matching/prior_guided.py`, `matching/structure.py` (blind fallback when there is no control grid: `classical.py`, `crater.py`) |
 | illumination | `illumination/relight.py`, `illumination/dem.py` |
 | geometry | `geometry/model_fit.py`, `geometry/nonrigid.py`, `geometry/parallax.py`, `geometry/analysis.py`, `geometry/warp.py` |
 | orchestration | `registration.py`, `pipeline.py` |

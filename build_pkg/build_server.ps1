@@ -5,8 +5,7 @@ $dist = "$PSScriptRoot\dist"; $work = "$PSScriptRoot\work"
   --paths src `
   --collect-all rasterio --collect-all pyproj --collect-submodules uvicorn --collect-submodules algo `
   --hidden-import uvicorn.logging --hidden-import uvicorn.loops.auto --hidden-import uvicorn.protocols.http.auto --hidden-import uvicorn.lifespan.on `
-  --exclude-module torch --exclude-module kornia --exclude-module torchvision --exclude-module tensorboard --exclude-module IPython --exclude-module pytest `
-  --add-data "$PWD\models\loftr_coarse.onnx;models" --add-data "$PWD\models\loftr_fine.onnx;models" `
+  --exclude-module onnxruntime --exclude-module torch --exclude-module kornia --exclude-module onnxruntime --exclude-module torchvision --exclude-module tensorboard --exclude-module IPython --exclude-module pytest `
   --distpath $dist --workpath $work --specpath $PSScriptRoot `
   src\algo\api\frozen_entry.py
 

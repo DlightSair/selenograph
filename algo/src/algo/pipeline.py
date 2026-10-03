@@ -32,7 +32,7 @@ from algo.geometry.refine import refine_and_densify
 from algo.geometry.robust_fit import fit_transform
 from algo.matching.classical import enforce_uniform_distribution, match_classical
 from algo.matching.crater import match_crater
-from algo.matching.learned import Match, match_learned
+from algo.matching.match import Match
 from algo.matching.prior_guided import RefLayer, SourcePyramid
 from algo.preprocessing.grid import (
     ControlGrid,
@@ -155,19 +155,8 @@ def run(config: dict, run_id: str | None = None) -> dict:
 
     matches = []
     for level in levels:
-        try:
-            learned = match_learned(level, config["matching"])
-        except NotImplementedError:
-            learned = []
-
-        threshold = config["matching"]["confidence_threshold"]
-        kept_learned = [m for m in learned if m.confidence >= threshold]
-        level_matches = list(kept_learned)
-        if len(kept_learned) < len(learned) or not learned:
-            level_matches += match_classical(level, config["matching"])
-        # Crater-constellation matching (algo.matching.crater) runs regardless of learned-
-        # matcher confidence: it targets the self-similar terrain that fools *both* LoFTR and
-        # ORB (CLAUDE.md's "known quality ceiling"), so it's an addition, not a fallback.
+        # Blind fallback (no control grid): classical ORB matching plus crater constellations.
+        level_matches = list(match_classical(level, config["matching"]))
         level_matches += match_crater(level, config["matching"])
 
         # Rescale from level-local pixel coords back to crop-native / full-reference-native coords.

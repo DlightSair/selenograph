@@ -71,7 +71,7 @@ def main() -> None:
         "reference": {"provider": args.provider, "layer": args.layer or Path(args.reference).stem, "path": rel(args.reference)},
         "dem": {"enabled": bool(args.dem), **({"path": rel(args.dem)} if args.dem else {})},
         "pyramid": {"levels": 4, "downsample_factor": 4},
-        "matching": {"primary": "loftr", "fallback": "classical", "confidence_threshold": 0.5,
+        "matching": {"primary": "classical", "confidence_threshold": 0.5,
                      "crater": {"num_peaks": 40, "min_distance": 8, "smooth_sigma": 2, "ratio_test": 0.75}},
         "anms": {"grid_size": 8, "max_matches_per_tile": 25},
         "geometry": {"transform": "homography", "ransac": "magsac", "reproj_threshold_px": 3.0},

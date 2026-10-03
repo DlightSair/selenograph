@@ -42,7 +42,7 @@ from algo.geometry.analysis import apply_homography, local_scale
 from algo.geometry.model_fit import fit_full_model
 from algo.geometry.parallax import parallax_basis
 from algo.matching import structure
-from algo.matching.learned import Match
+from algo.matching.match import Match
 
 
 @dataclass

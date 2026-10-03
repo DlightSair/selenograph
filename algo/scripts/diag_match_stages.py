@@ -26,7 +26,7 @@ from algo.geometry.refine import refine_and_densify
 from algo.geometry.robust_fit import fit_transform
 from algo.matching.classical import enforce_uniform_distribution, match_classical
 from algo.matching.crater import match_crater
-from algo.matching.learned import Match, match_learned
+from algo.matching.match import Match
 from algo.pipeline import _find_source_label_and_grid
 from algo.preprocessing.grid import (
     crop_reference_to_window,
@@ -75,24 +75,13 @@ matches = []
 for li, level in enumerate(levels):
     _mark(f"level {li} start (gsd={level.level_gsd:.1f}m, tile={level.source_tile.shape}/{level.reference_tile.shape})")
 
-    try:
-        learned = match_learned(level, config["matching"])
-    except NotImplementedError as e:
-        learned = []
-        _mark(f"  learned skipped: {e}")
-    _mark(f"  learned done: {len(learned)}")
-
-    threshold = config["matching"]["confidence_threshold"]
-    kept_learned = [m for m in learned if m.confidence >= threshold]
-    classical = []
-    if len(kept_learned) < len(learned) or not learned:
-        classical = match_classical(level, config["matching"])
-    _mark(f"  classical done: {len(classical)} (kept_learned={len(kept_learned)})")
+    classical = match_classical(level, config["matching"])
+    _mark(f"  classical done: {len(classical)}")
 
     crater = match_crater(level, config["matching"])
     _mark(f"  crater done: {len(crater)}")
 
-    level_matches = kept_learned + classical + crater
+    level_matches = classical + crater
     for m in level_matches:
         matches.append(
             Match(

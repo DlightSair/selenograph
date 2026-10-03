@@ -29,7 +29,7 @@ pyramid:
   downsample_factor: 4
 
 matching:
-  primary: loftr           # loftr | classical
+  primary: classical           # loftr | classical
   fallback: classical       # phase-congruency / RIFT-style, used on low-confidence tiles
   confidence_threshold: 0.5
   crater:                  # algo.matching.crater -- blob detection params, see module docstring
