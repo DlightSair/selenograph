@@ -1,51 +1,40 @@
-# Pipeline configuration — see docs/architecture.md for what each stage does.
+# Project configuration template.
+#
+# One file per project in this folder. Paths are relative to algo/ (absolute paths also work).
+# Create projects from the app (File > New project) or copy this file.
 
-aoi:
-  name: tycho_crater
-  # Narrowed to the NAC mosaic's own coverage (lon 348.17-349.65, lat -43.70 to -42.30) plus a
-  # small margin, rather than the full original AOI -- the WAC-era AOI extended well beyond
-  # where any reference data at useful resolution actually exists. See CLAUDE.md.
+aoi:                         # area of interest, degrees; longitude in 0..360
+  name: example_area
   lat_min: -43.85
   lat_max: -42.15
   lon_min: 348.00
   lon_max: 349.80
+  # source_rows: [42020, 75220]   # optional: limit the source product to these image lines
 
 source:
-  instrument: TMC2          # TMC2 | OHRC | IIRS
-  product_type: calibrated  # raw | calibrated | derived_dtm | derived_ortho
-  path: ../data/raw/chandrayaan2/tmc2/ch2_tmc_ncn_20240124T0838058678_d_img_d18
+  instrument: TMC2           # TMC2 | OHRC | IIRS
+  product_type: calibrated   # raw | calibrated | derived_dtm | derived_ortho
+  path: ../data/raw/chandrayaan2/tmc2/<product folder>      # PDS4 product, with its geometry/ folder
 
 reference:
   provider: lroc_nac_roi_mosaic
-  layer: NAC_ROI_TYCHOCTRLOA_E430S3489_5M   # controlled NAC mosaic, 5.00 m/px -- see CLAUDE.md
-  path: ../data/raw/lro_reference/tycho/nac/NAC_ROI_TYCHOCTRLOA_E430S3489_5M.TIF
+  layer: <layer name>
+  path: ../data/raw/lro_reference/<area>/<mosaic>.tif       # georeferenced GeoTIFF
 
-dem:
-  enabled: true
-  path: ../data/dem/tycho/ch2_tmc_ndn_20240124T0838058678_d_dtm_d18/data/derived/20240124/ch2_tmc_ndn_20240124T0838058678_d_dtm_d18.tif
+dem:                         # optional elevation model, enables the re-lit layer and the parallax term
+  enabled: false
+  path: ../data/dem/<area>/<dem>.tif
 
-pyramid:
-  levels: 4
-  downsample_factor: 4
-
-matching:
-  primary: classical           # loftr | classical
-  fallback: classical       # phase-congruency / RIFT-style, used on low-confidence tiles
-  confidence_threshold: 0.5
-  crater:                  # algo.matching.crater -- blob detection params, see module docstring
-    num_peaks: 40           # per polarity (bright+dark), per tile -- keep this small and sparse
-    min_distance: 8
-    smooth_sigma: 2
-    ratio_test: 0.75
-
-anms:
-  grid_size: 8              # tiles per axis for uniform-distribution enforcement
-  max_matches_per_tile: 25
-
-geometry:
-  transform: homography     # homography | affine | dtm_orthorectify
-  ransac: magsac            # magsac | ransac
-  reproj_threshold_px: 3.0  # 1.0 was unrealistically strict for a coarse (~68m/px) pyramid level; see CLAUDE.md
+registration:
+  mode: prior_guided
+  # nonrigid: true           # smooth residual field (kept only if cross-validation improves)
+  # parallax: true           # DEM parallax term (needs a DEM)
+  # relit:                   # extra reference layer: the DEM shaded with the source's Sun angle
+  #   enabled: true
+  #   dem: ../data/dem/<area>/<dem>.tif
+  #   weight: 1.0
+  # structure: auto          # auto | intensity | edges | cfog | orient
+  # min_ncc: 0.25            # minimum correlation for a tile to count
 
 evaluation:
   output_dir: ../data/results/

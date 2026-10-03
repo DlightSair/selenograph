@@ -14,11 +14,7 @@ Tile grid (verified against each layer's WMTSCapabilities.xml; identical for all
     tile (row, col) covers x = -1095930 + col*256*res .. , y = 1095930 - row*256*res .. downward.
     The pole is the centre of tile (2**(z-1), 2**(z-1)).
 
-Projection + ORIENTATION (verified empirically for the SOUTH layers, see
-data/raw/lro_reference/_checks/trek_sp_landmarks_footprints_z7.png: Shackleton, Haworth,
-Shoemaker, Faustini, de Gerlache and Sverdrup all land in the right craters, and a CH2 OHRC
-strip warped through its control grid matches the NAC tiles crater-for-crater;
-the other 7 mirror/rotation variants do not fit):
+Projection and orientation (checked against known south-pole craters; the other 7 mirror/rotation variants do not fit):
     polar stereographic on a sphere R = 1737400 m, k = 1 at the pole,
     south:  rho = 2 R tan((90 + lat)/2),  x = rho sin(lon),  y = +rho cos(lon)
             == PROJ  +proj=stere +lat_0=-90 +lon_0=0 +k=1 +R=1737400 +units=m

@@ -5,7 +5,6 @@ from __future__ import annotations
 import math
 from pathlib import Path
 
-import numpy as np
 import rasterio
 from rasterio.transform import Affine
 
@@ -27,30 +26,6 @@ def find_pds4_product(product_dir: str | Path) -> tuple[Path, Path]:
     if not label_path.exists():
         raise FileNotFoundError(f"no matching .xml label for {data_path}")
     return data_path, label_path
-
-
-def read_raster(path: str | Path, band: int = 1) -> tuple[np.ndarray, Affine, rasterio.crs.CRS | None]:
-    """Read one band of a raster plus its affine transform and CRS. CRS is None
-    for Chandrayaan-2 Calibrated products, which aren't map-projected yet."""
-    with rasterio.open(path) as ds:
-        return ds.read(band), ds.transform, ds.crs
-
-
-def write_raster(path: str | Path, array: np.ndarray, transform: Affine, crs) -> None:
-    path = Path(path)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with rasterio.open(
-        path,
-        "w",
-        driver="GTiff",
-        height=array.shape[0],
-        width=array.shape[1],
-        count=1,
-        dtype=array.dtype,
-        transform=transform,
-        crs=crs,
-    ) as ds:
-        ds.write(array, 1)
 
 
 def pixel_size_m(transform: Affine, crs: rasterio.crs.CRS | None) -> tuple[float, float]:

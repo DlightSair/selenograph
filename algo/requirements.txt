@@ -1,7 +1,7 @@
 # core
 numpy
 scipy
-opencv-contrib-python   # contrib build needed for cv2.USAC_MAGSAC (Stage 5)
+opencv-contrib-python   # contrib build needed for cv2.USAC_MAGSAC
 scikit-image
 matplotlib              # API visualizations, benchmark charts, diagnostic overlays
 

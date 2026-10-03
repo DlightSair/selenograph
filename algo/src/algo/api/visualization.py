@@ -1,12 +1,11 @@
 """Renders a run's result as a set of *separate* images plus a manifest, on
 demand, so the UI can give each one its own zoom window.
 
-The earlier single four-panel "registration view" had two problems: the
-panels were far too small to judge a 17000-line strip by eye, and a wrong fit
-hid in plain sight (a degenerate Copernicus transform got called "expected").
-So this shows what the transform actually *does* (footprint + warped grid
+Small panels cannot convey the quality of a fit over a 17000-line strip, and a
+degenerate transform can look plausible in a single summary view. The images
+therefore show what the transform actually *does* (footprint + warped grid
 overlaid on the reference), aligned close-ups at native resolution, a
-false-colour overlay that makes misalignment visible as colour fringes, and
+false-colour overlay that makes misalignment visible as colour fringes, plus
 numeric context (conditioning, scale vs GSD, independent anchors, agreement
 with the control-grid prior) that doesn't depend on judging a picture.
 """
@@ -476,7 +475,7 @@ def _render(config: dict, out_dir: Path, viz_dir: Path) -> dict:
         add("nonrigid", "Non-rigid correction",
             "A homography is exact for a flat scene and a pin-hole camera; a push-broom camera with platform "
             "jitter over rough terrain is neither. Left: the smooth displacement field fitted on top of the "
-            "homography (it was kept only because it predicted held-out tiles better). Right: per-match error "
+            "homography (it is kept only when it predicts held-out tiles better). Right: per-match error "
             "before and after it.", "Diagnostics")
 
     if H_prior is not None:

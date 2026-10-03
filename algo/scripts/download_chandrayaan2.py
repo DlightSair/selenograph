@@ -8,8 +8,8 @@ gets manually downloaded from there into a consistent local layout:
 
   data/raw/chandrayaan2/<instrument>/<product_type>/<product_id>/
 
-TODO: fill in once the manual download step is done, or if ISSDC exposes an API.
+Not implemented: ISSDC downloads are performed manually.
 """
 
 if __name__ == "__main__":
-    raise NotImplementedError("See module docstring — ISSDC downloads are manual via chmapbrowse for now.")
+    raise NotImplementedError("See module docstring — ISSDC downloads are manual via chmapbrowse.")

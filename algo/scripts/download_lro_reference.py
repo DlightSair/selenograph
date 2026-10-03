@@ -12,8 +12,8 @@ This script is a placeholder for organizing whatever gets exported from there in
 
   data/raw/lro_reference/<aoi_name>/<layer>/
 
-TODO: fill in once the manual export step is done, or if QuickMap exposes a bulk API.
+Not implemented: QuickMap exports are performed manually.
 """
 
 if __name__ == "__main__":
-    raise NotImplementedError("See module docstring — QuickMap exports are manual for now.")
+    raise NotImplementedError("See module docstring — QuickMap exports are manual.")

@@ -122,7 +122,7 @@ class BenchmarkSummary {
     required this.panels,
   });
 
-  /// Variants in canonical order (the pipeline's progression from the old
+  /// Variants in canonical order (the pipeline's progression from the
   /// baseline to the full model), then any unknown ones in first-seen order.
   /// Variants appearing in notes but in no panel are left out.
   List<String> get variants {

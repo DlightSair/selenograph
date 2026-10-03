@@ -16,7 +16,7 @@ displacement in reference pixels (a thin-plate spline through robustly binned
 tile residuals). The smoothing strength is chosen by *spatially blocked*
 cross-validation -- held-out cells are predicted from their neighbours -- and the
 field is only adopted if it beats the plain homography on held-out data, so it
-cannot fit noise. The honest accuracy number is the held-out RMSE.
+cannot fit noise. The reliable accuracy figure is the held-out RMSE.
 """
 
 from __future__ import annotations

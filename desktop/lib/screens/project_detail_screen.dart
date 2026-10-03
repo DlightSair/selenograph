@@ -447,10 +447,6 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
           [
             Prop('Scale ratio', d?.expectedScale != null ? '${d!.expectedScale!.toStringAsFixed(2)} ref px/src px' : '—'),
             if (reg?.mode != null) Prop('Mode', reg!.mode!),
-            if (reg?.mode != 'prior_guided') ...const [
-              Prop('Matchers', 'LoFTR · ORB · crater constellations', monospace: false),
-              Prop('Transform', 'Homography (MAGSAC)', monospace: false),
-            ],
             Prop('DEM', config.demEnabled ? 'enabled' : 'disabled', monospace: false),
           ],
           footer: reg == null || (reg.relit == null && reg.dem == null && reg.nonrigid == null)

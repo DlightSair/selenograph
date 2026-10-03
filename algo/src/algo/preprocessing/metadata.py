@@ -1,6 +1,6 @@
-"""Stage 0 — parse metadata for the source (Chandrayaan-2 PDS4 label) and
+"""Parses metadata for the source (Chandrayaan-2 PDS4 label) and
 reference (georeferenced raster) rasters: sun angle, GSD, footprint. Used to
-seed Stage 2's coarse-to-fine search with an expected scale ratio and rotation,
+seed the matcher with an expected scale ratio and rotation,
 not to establish ground truth (the label's own corner coordinates are exactly
 the positional error the pipeline is registering out)."""
 
@@ -19,8 +19,8 @@ _NS = {
     "isda": "https://isda.issdc.gov.in/pds4/isda/v1",
 }
 
-# Preferred first: least-corrected first for System/Refined/Corrected blocks, but we
-# want the BEST available geometry for a search-window estimate, so try most-refined first.
+# Tried in order, most-refined geometry first: the best available geometry gives the best
+# search-window estimate.
 _CORNER_BLOCKS = ("Corrected_Corner_Coordinates", "Refined_Corner_Coordinates", "System_Level_Coordinates")
 _CORNER_ORDER = ("upper_left", "upper_right", "lower_right", "lower_left")
 

@@ -1,19 +1,10 @@
-"""End-to-end orchestration of the registration pipeline. See docs/architecture.md.
+"""End-to-end registration of one project.
 
-Stage order in practice differs slightly from the original design sketch:
-illumination normalization (Stage 1) runs lazily per pyramid level inside
-the classical matcher rather than once upfront, since it's cheap only on
-the much-smaller per-level tiles, not the full multi-hundred-megapixel
-source crop.
+`run(config)` loads the AOI crops, builds the control-grid prior, runs the staged tile matcher and the
+full model fit (`algo.registration`), writes the metrics and the registered GeoTIFF, and returns the metrics
+dict. The configuration format is documented in `configs/default.yaml`.
 
-Accuracy-improvement stages added after the first real end-to-end run (see
-CLAUDE.md's "known quality ceiling" and "accuracy improvements" sections),
-inserted between matching and the final evaluation:
-  4.5a `geometry.consistency` -- pairwise geometric-consistency confidence boost.
-  4.5b `preprocessing.relief` -- DTM-based relief-risk confidence weighting.
-  5.5  `geometry.refine` -- sub-pixel refinement + guided densification.
-Plus a third matcher, `matching.crater` (crater-constellation matching),
-added alongside LoFTR/ORB rather than replacing either.
+Command line:  python -m algo.pipeline --config configs/<project>.yaml
 """
 
 import argparse
@@ -21,45 +12,23 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import numpy as np
-import rasterio
 import yaml
 
-from algo.api._crops import find_source_label_and_grid, load_aoi_context
+from algo.api._crops import load_aoi_context
 from algo.evaluation.metrics import evaluate
 from algo.export import write_registered_geotiff, write_tiepoints_geo
-from algo.geometry.consistency import boost_by_global_consistency
-from algo.geometry.refine import refine_and_densify
-from algo.geometry.robust_fit import fit_transform
-from algo.matching.classical import enforce_uniform_distribution, match_classical
-from algo.matching.crater import match_crater
 from algo.matching.match import Match
 from algo.matching.prior_guided import RefLayer, SourcePyramid
-from algo.preprocessing.grid import (
-    ControlGrid,
-    crop_reference_to_window,
-    crop_source_to_aoi,
-    load_geometry_grid,
-    reference_window_for_source_window,
-)
-from algo.preprocessing.metadata import load_metadata
-from algo.preprocessing.relief import apply_relief_risk_weighting
-from algo.pyramid.coarse_to_fine import align_coarse_to_fine
 from algo.registration import register
 
 
-def _find_source_label_and_grid(source_cfg: dict) -> tuple[Path, Path]:
-    return find_source_label_and_grid(source_cfg)
-
-
-def _run_prior_guided(config: dict, run_id: str | None, reg_cfg: dict) -> dict | None:
-    """Dense tile matching around the control-grid prior (algo.matching.prior_guided), a robust
-    homography, and a cross-validated non-rigid residual field (algo.registration). No fallback to
-    blind matching on failure: a reported "no reliable fit" is more useful than a confident-looking
-    wrong one (see CLAUDE.md, Copernicus). Returns None when the product has no usable control grid."""
+def _register_project(config: dict, run_id: str | None, reg_cfg: dict) -> dict:
+    """Dense tile matching around the control-grid prior, a robust homography, and a cross-validated
+    non-rigid residual field. A run that finds no reliable fit reports it instead of guessing."""
     ctx = load_aoi_context(config, decimation="auto", with_relit=True, with_dem=True)
     prior = ctx.prior_local()
     if prior is None:
-        return None
+        raise ValueError("the source product has no usable control grid inside the AOI")
     reference_gsd = ctx.reference_meta.gsd
     layers = [RefLayer(ctx.reference_crop)]
     relit_w = float((reg_cfg.get("relit") or {}).get("weight", 1.0))
@@ -124,79 +93,12 @@ def _run_prior_guided(config: dict, run_id: str | None, reg_cfg: dict) -> dict |
 
 
 def run(config: dict, run_id: str | None = None) -> dict:
-    reg_cfg = config.get("registration", {})
-    if reg_cfg.get("mode", "prior_guided") == "prior_guided":
-        result = _run_prior_guided(config, run_id, reg_cfg)
-        if result is not None:
-            return result
-        # No usable control grid: fall through to blind global matching below.
-
-    source_meta, reference_meta = load_metadata(config["source"], config["reference"])
-
-    label_path, grid_csv = _find_source_label_and_grid(config["source"])
-    aoi = config["aoi"]
-    source_crop, source_window = crop_source_to_aoi(
-        label_path, grid_csv, aoi["lat_min"], aoi["lat_max"], aoi["lon_min"], aoi["lon_max"]
-    )
-
-    # Shape-match the reference crop to the source swath's actual footprint,
-    # not the whole exported reference tile -- a narrow push-broom strip
-    # barely overlaps a square AOI export, which starves the matcher.
-    grid = grid_csv if isinstance(grid_csv, ControlGrid) else load_geometry_grid(grid_csv)
-    with rasterio.open(config["reference"]["path"]) as ds:
-        reference_transform, reference_crs = ds.transform, ds.crs
-    reference_window = reference_window_for_source_window(grid, source_window, reference_transform, reference_crs)
-    reference_crop = crop_reference_to_window(config["reference"]["path"], reference_window)
-    reference_row_offset, reference_col_offset = reference_window[0], reference_window[2]
-
-    levels = align_coarse_to_fine(
-        source_crop.astype(np.float64), reference_crop, source_meta.gsd, reference_meta.gsd, config["pyramid"]
-    )
-
-    matches = []
-    for level in levels:
-        # Blind fallback (no control grid): classical ORB matching plus crater constellations.
-        level_matches = list(match_classical(level, config["matching"]))
-        level_matches += match_crater(level, config["matching"])
-
-        # Rescale from level-local pixel coords back to crop-native / full-reference-native coords.
-        for m in level_matches:
-            matches.append(
-                Match(
-                    (m.source_xy[0] * level.source_scale, m.source_xy[1] * level.source_scale),
-                    (
-                        m.reference_xy[0] * level.reference_scale + reference_col_offset,
-                        m.reference_xy[1] * level.reference_scale + reference_row_offset,
-                    ),
-                    m.confidence,
-                )
-            )
-
-    dem_cfg = config.get("dem", {})
-    if dem_cfg.get("enabled"):
-        matches = apply_relief_risk_weighting(matches, reference_transform, reference_crs, dem_cfg["path"])
-
-    matches = boost_by_global_consistency(matches)
-    matches = enforce_uniform_distribution(matches, config["anms"])
-    transform, inliers = fit_transform(matches, config["geometry"])
-
-    # Sub-pixel refine + guided densification (algo.geometry.refine), seeded by the first-pass
-    # inliers. Only adopted if it doesn't make things worse -- matches/transform/inliers are
-    # replaced together so inlier_ratio stays a meaningful <=1 fraction of its own candidate pool.
-    if transform is not None and len(inliers) >= 4:
-        refined_matches = refine_and_densify(
-            inliers, source_crop, reference_crop, transform, source_meta.gsd, reference_meta.gsd,
-            reference_row_offset, reference_col_offset,
-        )
-        refined_transform, refined_inliers = fit_transform(refined_matches, config["geometry"])
-        if refined_transform is not None and len(refined_inliers) >= len(inliers):
-            matches, transform, inliers = refined_matches, refined_transform, refined_inliers
-
-    return evaluate(matches, inliers, transform, config["evaluation"], run_id=run_id)
+    """Registers the source to the reference for one project and returns the metrics dict."""
+    return _register_project(config, run_id, config.get("registration", {}))
 
 
 def main():
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(description="Register a Chandrayaan-2 source product to its reference.")
     parser.add_argument("--config", required=True)
     parser.add_argument("--run-id", default=None, help="Pre-assign the output dir name (used by the API server).")
     args = parser.parse_args()

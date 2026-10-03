@@ -1,8 +1,7 @@
-"""Stage 0 tests against real PDS4 products: a TMC-2 DTM (data/dem/tycho/), an
-OHRC image and a TMC-2 image set aside as non-Tycho test cases (South/North
-Pole footprints -- confirm the label parser generalizes across instruments
-with no instrument-specific code), and the TMC-2 Calibrated image that
-actually matches the Tycho DTM (same orbit, 19674)."""
+"""Metadata tests against real PDS4 products: a TMC-2 DTM (data/dem/tycho/), an
+OHRC image and a TMC-2 image with polar footprints (confirming that the label
+parser generalizes across instruments with no instrument-specific code), and the
+TMC-2 Calibrated image from the same orbit (19674) as the Tycho DTM."""
 
 from pathlib import Path
 
@@ -83,7 +82,7 @@ def test_parse_pds4_label_on_ohrc_product():
     assert meta.sun_azimuth == pytest.approx(242.980602, abs=1e-3)
     assert meta.sun_elevation == pytest.approx(0.785661, abs=1e-3)
     assert meta.shape == (101074, 12000)
-    # Label states 0.24 m/px; our great-circle estimate is rough near the pole
+    # Label states 0.24 m/px; the great-circle estimate is rough near the pole
     # (longitude degenerates there) so allow a looser tolerance than the DTM case.
     assert meta.gsd == pytest.approx(0.24, rel=0.2)
 
@@ -103,7 +102,7 @@ def test_parse_pds4_label_on_tmc2_product():
 
 @skip_without_tmc2_tycho
 def test_tmc2_tycho_product_matches_the_dtm_orbit_and_covers_tycho():
-    """The active source image: same orbit (19674) and sun angle as the Tycho
+    """The TMC-2 source image: same orbit (19674) and sun angle as the Tycho
     DTM, and its footprint must actually contain Tycho crater."""
     _data_path, label_path = find_pds4_product(TMC2_TYCHO_PRODUCT)
     meta = parse_pds4_label(label_path)

@@ -72,7 +72,7 @@ class AoiContext:
 
 def load_aoi_context(config: dict, decimation: int | str = "auto", with_relit: bool = False, with_dem: bool = False) -> AoiContext:
     """`decimation="auto"` block-averages huge source crops on read (an OHRC strip is >1 Gpx) to roughly
-    the reference's resolution; pass 1 for the full-resolution crop (the blind path needs it)."""
+    the reference's resolution; pass 1 for the full-resolution crop."""
     label_path, grid_csv = find_source_label_and_grid(config["source"])
     aoi = config["aoi"]
     try:
@@ -144,9 +144,3 @@ def load_relit_layer(config: dict, ctx: AoiContext) -> np.ndarray | None:
 
     return relit_reference(dem_path, ctx.reference_transform, ctx.reference_crs, ctx.reference_window,
                            meta.sun_azimuth, meta.sun_elevation)
-
-
-def load_aoi_crops(config: dict) -> tuple[np.ndarray, np.ndarray, tuple[float, float]]:
-    """Returns (source_crop, reference_crop, (ref_row_offset, ref_col_offset)). Full-resolution source."""
-    ctx = load_aoi_context(config, decimation=1)
-    return ctx.source_crop, ctx.reference_crop, (ctx.reference_row_offset, ctx.reference_col_offset)

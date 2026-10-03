@@ -1,12 +1,11 @@
 """Prior-guided dense tile matching.
 
-The blind pipeline (LoFTR/ORB/crater matching, then one robust fit) searches the
-whole reference for look-alike terrain and ends up with a handful of
-clustered, often wrong, anchors, from which one homography is extrapolated
-across a ~100 km strip. This matcher uses what is already known instead: the
+Searching the whole reference for look-alike terrain yields few, clustered and
+often wrong anchors, from which one homography would be extrapolated across a
+~100 km strip. This matcher instead uses what is already known: the
 product's own control grid gives an independent source->reference mapping
 (`preprocessing.grid.control_grid_prior_homography`), accurate to a few
-hundred metres. With that prior the problem is no longer "find this crater
+hundred metres. With that prior the problem is not "find this crater
 anywhere on the Moon" but "measure a small residual shift", which is solved
 locally and robustly:
 
@@ -26,7 +25,7 @@ Scale handling: each stage works at one *common* ground resolution. The finer of
 the two images is block-averaged down to the coarser one (so a 0.26 m OHRC strip
 is reduced to the ~4 m of its NAC reference, a 5 m TMC-2 strip to the 100 m of
 a WAC reference, and a coarse 100 m IIRS cube leaves a 5 m reference to be
-reduced), instead of assuming the source is the finer image.
+reduced). Either image may be the finer one.
 """
 
 from __future__ import annotations
@@ -371,7 +370,7 @@ def _robust_translation(shifts: np.ndarray, radius: float) -> tuple[np.ndarray |
 def _dense_bar(configured: float | None, prev_median_ncc: float | None, fallback: float = 0.3) -> float:
     """Correlation bar for the many-tile pass: 80% of the previous stage's median, floored at 0.2 (or at
     the fine-stage bar when that is lower: gradient-based representations peak lower than intensity).
-    A fixed bar is wrong across scenes (Tycho correlates ~0.5, Copernicus's near-noon source ~0.3)."""
+    A fixed bar does not suit all scenes (typical peak correlations range from ~0.3 to ~0.5)."""
     if configured is not None:
         return configured
     floor = min(0.2, fallback)

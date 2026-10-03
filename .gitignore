@@ -12,24 +12,16 @@ data/*.sh
 data/ch2_*/
 !data/**/.gitkeep
 
-# pretrained weights
-algo/models/*
-!algo/models/.gitkeep
-
 # python
 __pycache__/
 *.pyc
 .venv/
 *.egg-info/
 
-# notebooks
-.ipynb_checkpoints/
-
-# ui
-ui/node_modules/
-ui/dist/
-ui/.next/
-
 # os / editor
 .DS_Store
 .vscode/
+
+# per-project configs are local: they point at imagery that is not in the repository
+algo/configs/*.yaml
+!algo/configs/default.yaml

@@ -5,7 +5,7 @@ problem this pipeline solves), so they can't be cropped by lat/lon the way a
 georeferenced raster can. Each product ships a geometry/*_g_grd_*.csv grid
 alongside it -- (Longitude, Latitude, Pixel, Scan) control points sampled on
 a regular pixel grid (e.g. every 100 px) -- derived from the same
-uncorrected spacecraft pointing as the image itself. We use it only to find
+uncorrected spacecraft pointing as the image itself. It is used only to find
 an approximate (line, sample) window covering an AOI, so a huge orbit strip
 (hundreds of thousands of lines) can be windowed down to a manageable crop
 before any pixel-level processing. It is a seed for cropping, not ground
@@ -227,7 +227,7 @@ def _project_wrap_safe(
     (-180, 180] before applying the target CRS's projection formula --
     re-feeding it lon+-360 makes no difference, PROJ collapses them to the
     same normalized value internally. But some planetary equirectangular
-    products (e.g. a LROC NAC ROI mosaic, verified on the real Tycho data)
+    products (e.g. a LROC NAC ROI mosaic)
     were built from *unwrapped* (always-increasing 0-360) longitude, so the
     wrapped and unwrapped results land a full lunar circumference apart
     (~8,000 km) in the projected CRS -- there's no way to get PROJ's own
@@ -239,7 +239,7 @@ def _project_wrap_safe(
     hardcoded to one dataset. Whichever of PROJ's result or this manual one
     lands closer to a known-good anchor in that CRS (the reference raster's
     own upper-left corner) is kept -- so a reference CRS using the standard
-    wrapped convention (verified fine on the older WAC reference) is
+    wrapped convention is
     unaffected."""
     candidates = [transformer.transform(lon, lat)]
 
@@ -307,7 +307,7 @@ def control_grid_prior_homography(
     pointing (a few hundred metres on a good product), so it is not ground
     truth -- but it is *independent of the image matching*, which makes it
     a strong sanity check on a matcher-derived fit: a real registration
-    lands near it (Tycho: 40-55 px), a wrong one lands thousands of px away."""
+    lands near it (tens of px), a wrong one lands thousands of px away."""
     import cv2
 
     row_start, row_stop, col_start, col_stop = source_window

@@ -249,15 +249,6 @@ def create_config(req: CreateConfigRequest) -> dict:
             "path": req.reference_path,
         },
         "dem": dem_section,
-        "pyramid": {"levels": 4, "downsample_factor": 4},
-        "matching": {
-            "primary": "classical",
-            "fallback": "classical",
-            "confidence_threshold": 0.5,
-            "crater": {"num_peaks": 40, "min_distance": 8, "smooth_sigma": 2, "ratio_test": 0.75},
-        },
-        "anms": {"grid_size": 8, "max_matches_per_tile": 25},
-        "geometry": {"transform": "homography", "ransac": "magsac", "reproj_threshold_px": 3.0},
         "evaluation": {"output_dir": "../data/results/"},
     }
     config_path.write_text(yaml.safe_dump(config, sort_keys=False))

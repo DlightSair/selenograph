@@ -1,5 +1,5 @@
 """Fit the full source->reference model (homography + DEM parallax + non-rigid field) to a set of
-tile correspondences. Used twice: by the matcher between coarse-to-fine stages (so the next stage
+tile correspondences. Used by the matcher between its stages (so the next stage
 measures small residuals around the improved model instead of large ones around a bare homography),
 and by `registration.register` for the final fit.
 """

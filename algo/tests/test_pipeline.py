@@ -23,16 +23,13 @@ def _default_config_data_available() -> bool:
     )
 
 
-@pytest.mark.skipif(not _default_config_data_available(), reason="real Tycho source/reference data not present")
+@pytest.mark.skipif(not _default_config_data_available(), reason="configured source/reference data not present")
 def test_run_end_to_end():
-    """Runs the real pipeline against the real Tycho source/reference pair
-    configured in configs/default.yaml. Slow (several minutes): windowed-
-    reads a 1.7GB source strip, runs Gabor filtering + ORB + crater matching
-    at close to native resolution now that source/reference GSD are nearly
-    matched (CLAUDE.md's "Reference data swap"). Match quality isn't
-    asserted here (that's a tuning concern, not a wiring one) -- this only
-    confirms every stage runs end-to-end without raising and returns the
-    expected result shape."""
+    """Runs the prior-guided pipeline on the source/reference pair configured in
+    configs/default.yaml. Slow (several minutes): a windowed read of a large source
+    strip, control-grid prior, tile matching and the final model fit. Match quality is
+    not asserted (it is covered by the benchmark); the test only confirms that every
+    stage runs without raising and that the result has the expected keys."""
     from algo.pipeline import run
 
     with open(CONFIG_PATH) as f:

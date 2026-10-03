@@ -461,7 +461,7 @@ class _ResultsScreenState extends State<ResultsScreen> {
           const SizedBox(height: 8),
           const Note(
             'RMSE is the error on the matches the fit kept; held-out is the error on tiles it never saw, so it is the '
-            'honest accuracy figure. Lower is better.',
+            'more reliable accuracy figure. Lower is better.',
           ),
         ],
       ),

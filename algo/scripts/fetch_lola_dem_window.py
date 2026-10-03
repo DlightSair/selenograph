@@ -15,9 +15,8 @@ Trek NAC reference share a frame.
 
 NOTE on consumers in src/algo: illumination/dem.py (relit layer) reprojects any-CRS DEMs onto
 the reference grid (NaN nodata handled, grid convergence handled) so these windows work there.
-The legacy preprocessing/relief.py assumes a GEOGRAPHIC DEM (rowcol(dem_transform, lon, lat)
-directly; pixel_size_m() ignores cos(lat); compares `patch == nodata`, never true for NaN), so it
-cannot consume a projected DEM. Low Sun casts very long shadows (a 1 km ridge at 2 deg = ~30 km):
+Consumers must therefore handle projected CRSs and NaN nodata rather than assume a geographic
+DEM. Low Sun casts very long shadows (a 1 km ridge at 2 deg = ~30 km):
 use --margin-km 30 if the DEM will be used to relight a 1-4 deg-Sun OHRC strip.
 
     python scripts/fetch_lola_dem_window.py --product <product dir | *_g_grd_*.csv> [--margin-km 10] [--res 20]
@@ -28,7 +27,6 @@ use --margin-km 30 if the DEM will be used to relight a 1-4 deg-Sun OHRC strip.
 from __future__ import annotations
 
 import argparse
-import glob
 import sys
 from pathlib import Path
 

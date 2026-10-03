@@ -122,7 +122,7 @@ def test_unlit_source_is_refused_up_front():
 
 
 def test_rescue_search_alone_finds_rotation_scale_and_shift():
-    """The wide-search fallback, called directly (the normal capture now copes with moderate errors itself)."""
+    """The wide-search fallback, called directly (the normal capture handles moderate errors itself)."""
     from algo.matching.prior_guided import RefLayer, SourcePyramid, _rescue_capture
 
     reference = _texture((3200, 2800), sigma=5, seed=11)

@@ -1,13 +1,12 @@
 """Plain-numbers diagnostics for a fitted transform -- the checks a person
-would otherwise do by squinting at an overlay. RMSE and inlier ratio can't
+would otherwise do by inspecting an overlay. RMSE and inlier ratio cannot
 catch a *degenerate* fit (a rank-deficient homography projects every point
-near one curve, so its reprojection error is small by construction; see
-CLAUDE.md's Copernicus correction), so these look at the transform's shape,
+near one curve, so its reprojection error is small by construction), so these look at the transform's shape,
 how many genuinely independent anchors back it, and whether it agrees with
 the independent control-grid prior.
 
-The pass/fail thresholds are heuristics calibrated on two real AOIs (one
-known-good, one known-bad), not derived constants -- each check reports its
+The pass/fail thresholds are heuristics calibrated on real AOIs (known-good and
+known-bad), not derived constants -- each check reports its
 measured value so a borderline case can be judged by eye.
 """
 

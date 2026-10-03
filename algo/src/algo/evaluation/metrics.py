@@ -1,4 +1,4 @@
-"""Stage 6 — evaluation metrics: RMSE, inlier count/ratio, spatial uniformity.
+"""Evaluation metrics: RMSE, inlier count/ratio, spatial uniformity.
 Writes metrics.json, matches.csv, transform.json, and a match-overlay PNG to
 evaluation_cfg['output_dir']/run_id/.
 """

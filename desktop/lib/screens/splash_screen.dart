@@ -62,7 +62,7 @@ class _SplashScreenState extends State<SplashScreen> {
       if (mounted) setState(() => _status = _statusMessages[messageIndex]);
     });
 
-    // Packaged build: always start our own private service; never trust whatever might already answer on
+    // Packaged build: always start a private service rather than trusting anything already answering on
     // the default port.
     final packaged = widget.api == null && widget.launcher == null && ServerLauncher.hasBundled;
     if (packaged) {
@@ -210,13 +210,9 @@ class _SplashScreenState extends State<SplashScreen> {
 
   String _diagnosticText() {
     final searched = ServerLauncher.lastSearchedPaths;
-    final log = ServerLauncher.lastLogPath;
     final buffer = StringBuffer('Could not reach 127.0.0.1:8000.\n');
     if (searched.isNotEmpty) {
       buffer.write('Searched for algo/.venv at:\n${searched.take(6).join('\n')}\n');
-    }
-    if (log != null) {
-      buffer.write('Server log: $log\n');
     }
     buffer.write(
       'Manual fallback: run algo/start_server.bat, or from algo/ inside its venv:\n'

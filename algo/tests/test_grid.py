@@ -1,6 +1,5 @@
 """Tests for preprocessing/grid.py's reference-window projection, in
-particular the longitude-wraparound fix found on the real Tycho run (see
-CLAUDE.md): pyproj normalizes longitude to (-180, 180] before applying a
+particular the longitude-wraparound handling: pyproj normalizes longitude to (-180, 180] before applying a
 target CRS's projection formula, but the LROC NAC ROI mosaic's
 Equirectangular CRS was built from unwrapped (always 0-360) longitude, so
 the two conventions land a full lunar circumference apart. Synthetic CRS
