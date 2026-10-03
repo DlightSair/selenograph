@@ -136,7 +136,7 @@ footer{max-width:1060px;margin:0 auto 30px;padding:0 16px;color:#fff;text-shadow
     <div class="title"><i class="box"></i><span>01 · Features</span></div>
     <div class="body grid">
       <fieldset><legend>Projects</legend><p>One project per area: source product, reference mosaic, AOI.</p><p>Open it for images, last run and run history.</p></fieldset>
-      <fieldset><legend>Registration</legend><p>Tile matching (LoFTR, ORB, crater constellations), coarse to fine.</p><p>Homography fitted with MAGSAC.</p></fieldset>
+      <fieldset><legend>Registration</legend><p>Normalized cross-correlation on image tiles, coarse to fine, starting from the product's control grid.</p><p>Homography fitted with MAGSAC.</p></fieldset>
       <fieldset><legend>Illumination</legend><p>DEM re-lit at the source Sun angle.</p><p>Image representation (intensity, edges, cfog) selected per scene.</p></fieldset>
       <fieldset><legend>Viewing geometry</legend><p>Cross-validated non-rigid residual field.</p><p>DEM parallax term for off-nadir views.</p></fieldset>
       <fieldset><legend>Fit checks</legend><p>Held-out RMSE, scale and prior agreement, anchor count.</p><p>A run that fails is reported as No fit.</p></fieldset>
