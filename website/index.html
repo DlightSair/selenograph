@@ -1,0 +1,309 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Selenograph – Lunar image registration</title>
+<meta name="description" content="Selenograph registers Chandrayaan-2 OHRC, TMC-2 and IIRS images to LRO reference mosaics. Download for Windows.">
+<style>
+:root{
+  --desk:#8e8e93; --chrome:#dcdcdc; --chrome2:#c8c8c8; --paper:#fff; --stripe:#f2f2f2;
+  --edge:#555; --hi:#fff; --lo:#8a8a8a; --ink:#111; --ink2:#444; --ink3:#777;
+  --accent:#2f6fd0; --accent-hi:#6aa2ee; --accent-lo:#1a4a99; --lcd:#c6d3a6; --lcd-ink:#1b2a0c; --amber:#c27a00; --amberwash:#fff0cc;
+  --r:4px;
+  --ui:Tahoma,"Lucida Grande","Segoe UI",Geneva,Verdana,sans-serif;
+  --mono:"Lucida Console",Monaco,Consolas,"Courier New",monospace;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;font:13px/1.45 var(--ui);color:var(--ink);background:var(--desk);
+  background-image:radial-gradient(rgba(0,0,0,.09) 1px,transparent 1.2px);background-size:4px 4px}
+a{color:var(--accent-lo)}
+.menubar{position:sticky;top:0;z-index:10;height:24px;display:flex;align-items:center;gap:2px;padding:0 10px;
+  background:linear-gradient(#f4f4f4,#d4d4d4);border-bottom:1px solid var(--edge);font-size:12.5px}
+.menubar b{margin-right:10px}
+.menubar a{color:var(--ink);text-decoration:none;padding:2px 9px;border-radius:3px}
+.menubar a:hover{background:var(--accent);color:#fff}
+.menubar .clock{margin-left:auto;font-family:var(--mono);font-size:11.5px;color:var(--ink2)}
+main{max-width:1060px;margin:26px auto 40px;padding:0 16px;display:grid;gap:22px}
+.win{background:var(--chrome);border:1px solid var(--edge);border-radius:6px;
+  box-shadow:4px 5px 0 rgba(0,0,0,.45);overflow:hidden;opacity:0;transform:translateY(10px);
+  transition:opacity .5s cubic-bezier(.2,.9,.3,1.1),transform .5s cubic-bezier(.2,.9,.3,1.1);scroll-margin-top:34px}
+.win.in{opacity:1;transform:none}
+.title{height:24px;border-bottom:1px solid var(--edge);display:flex;align-items:center;gap:8px;padding:0 8px;
+  background:repeating-linear-gradient(#e9e9e9 0 1px,#b9b9b9 1px 2px)}
+.title .box{width:12px;height:12px;border:1px solid var(--edge);background:var(--chrome);border-radius:2px;box-shadow:inset 1px 1px 0 var(--hi)}
+.title span{background:var(--chrome);padding:0 10px;font-weight:700;margin:0 auto;transform:translateX(-10px)}
+.body{padding:18px}
+h1{font-size:32px;margin:0 0 4px;letter-spacing:-.3px}
+h2{font-size:13px;margin:0 0 8px}
+p{margin:0 0 10px}
+.cap{color:var(--ink3);font-size:11.5px}
+.mono{font-family:var(--mono)}
+.hero{display:grid;grid-template-columns:auto 1fr;gap:26px;align-items:center}
+.hero canvas{image-rendering:pixelated;border:1px solid var(--edge);border-radius:4px;background:#fff;width:144px;height:144px}
+.lead{font-size:14px;color:var(--ink2);max-width:600px}
+.btn{font:700 13px var(--ui);color:var(--ink);padding:6px 18px;border:1px solid var(--edge);border-radius:4px;
+  background:linear-gradient(#fafafa,#cfcfcf);box-shadow:inset 1px 1px 0 var(--hi),inset -1px -1px 0 var(--lo);
+  cursor:pointer;text-decoration:none;display:inline-block;transition:transform .12s}
+.btn:active{background:linear-gradient(#bdbdbd,#dedede);box-shadow:inset 1px 1px 2px #777;transform:translateY(1px)}
+.btn[disabled]{opacity:.5;cursor:default}
+.btn.def{color:#fff;border-color:var(--accent-lo);background:linear-gradient(var(--accent-hi),var(--accent));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.55);animation:pulse 2s ease-in-out infinite}
+.btn.def[disabled]{animation:none}
+@keyframes pulse{50%{box-shadow:inset 0 1px 0 rgba(255,255,255,.55),0 0 0 4px rgba(47,111,208,.25)}}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:14px}
+.lcds{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}
+.lcd{background:var(--lcd);border:1px solid var(--edge);border-radius:4px;padding:6px 10px;box-shadow:inset 1px 1px 3px rgba(0,0,0,.35)}
+.lcd small{display:block;font-size:10.5px;color:#46562c}
+.lcd b{font:400 24px var(--mono);color:var(--lcd-ink)}
+.lcd i{font:normal 12px var(--mono);margin-left:3px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:14px}
+fieldset{margin:0;border:1px solid var(--lo);border-radius:4px;padding:10px 12px;background:var(--chrome2);box-shadow:1px 1px 0 var(--hi);min-width:0}
+legend{font-weight:700;padding:0 6px;background:var(--chrome2)}
+fieldset p{margin:0 0 6px;color:var(--ink2)}
+fieldset p:last-child{margin:0}
+.seg{display:inline-flex;border:1px solid var(--edge);border-radius:4px;overflow:hidden;flex-wrap:wrap}
+.seg button{font:12px var(--ui);padding:4px 12px;border:0;border-right:1px solid var(--edge);background:linear-gradient(#fafafa,#cfcfcf);cursor:pointer}
+.seg button:last-child{border-right:0}
+.seg button[aria-pressed=true]{background:linear-gradient(var(--accent-hi),var(--accent));color:#fff;font-weight:700}
+.shot{background:#9a9a9a;border:1px solid var(--edge);border-radius:4px;padding:8px;display:flex;align-items:center;justify-content:center;box-shadow:inset 1px 1px 3px rgba(0,0,0,.4)}
+.shot img{max-width:100%;display:block;transition:opacity .25s}
+table{border-collapse:collapse;width:100%;font-size:12px}
+td,th{padding:3px 8px;text-align:left;border-bottom:1px solid #e3e3e3}
+th{background:linear-gradient(#f4f4f4,#d4d4d4);border-bottom:1px solid var(--edge);font-weight:700}
+.tbl{background:#fff;border:1px solid var(--edge);border-radius:4px;overflow:auto}
+tr:nth-child(even) td{background:var(--stripe)}
+td.n,th.n{text-align:right;font-family:var(--mono)}
+pre{margin:6px 0 0;padding:8px 10px;font:11.5px var(--mono);background:#fff;border:1px solid var(--edge);border-radius:4px;overflow:auto}
+.steps{counter-reset:s;display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px}
+.step{display:flex;gap:10px;align-items:flex-start}
+.step:before{counter-increment:s;content:counter(s);flex:none;width:22px;height:22px;border-radius:50%;text-align:center;line-height:20px;
+  font-weight:700;color:#fff;border:1px solid var(--accent-lo);background:linear-gradient(var(--accent-hi),var(--accent))}
+.step b{display:block}.step span{color:var(--ink2)}
+.links a{display:block;padding:4px 0}
+/* demo */
+.demo{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:14px;align-items:start}
+.bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+select{font:12px var(--ui);padding:4px 6px;border:1px solid var(--edge);border-radius:4px;background:linear-gradient(#fafafa,#e2e2e2)}
+.run{height:28px;margin-top:12px;display:flex;align-items:center;gap:10px;padding:0 10px;background:var(--amberwash);border:1px solid var(--amber);border-radius:4px;font-size:12px}
+.pole{width:120px;height:10px;border:1px solid var(--edge);border-radius:5px;overflow:hidden;
+  background:repeating-linear-gradient(-45deg,var(--accent) 0 6px,#bcd3f3 6px 12px);background-size:17px 17px;animation:pole .6s linear infinite}
+@keyframes pole{to{background-position:17px 0}}
+.view{position:relative;display:inline-block;max-width:100%;line-height:0;user-select:none;touch-action:none}
+.view img{max-height:620px;width:auto;max-width:100%;display:block}
+.view .top{position:absolute;inset:0;overflow:hidden}
+.view .top img{max-width:none;height:100%;width:auto}
+.view .grab{position:absolute;top:0;bottom:0;width:2px;background:#fff;box-shadow:0 0 0 1px #000;cursor:ew-resize}
+.view .grab:after{content:"";position:absolute;top:50%;left:-9px;width:20px;height:20px;margin-top:-10px;border-radius:50%;
+  background:linear-gradient(#fafafa,#cfcfcf);border:1px solid #000}
+.tag{position:absolute;top:6px;padding:1px 6px;font:700 11px var(--ui);background:rgba(0,0,0,.65);color:#fff;border-radius:3px;line-height:1.4}
+.ctl{display:flex;gap:10px;align-items:center;margin-top:10px;font-size:12px}
+.ctl input[type=range]{flex:1;accent-color:var(--accent)}
+.hide{display:none!important}
+.ex{padding:16px 0 22px;border-top:1px solid var(--lo)}.ex:first-child{border-top:0;padding-top:6px}
+footer{max-width:1060px;margin:0 auto 30px;padding:0 16px;color:#fff;text-shadow:0 1px 0 rgba(0,0,0,.5);font-size:12px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px}
+@media(max-width:820px){.hero{grid-template-columns:1fr}.demo{grid-template-columns:1fr}.menubar a:nth-child(n+5){display:none}}
+@media(prefers-reduced-motion:reduce){.win{transition:none}.btn.def,.pole{animation:none}}
+</style>
+</head>
+<body>
+<nav class="menubar">
+  <b>Selenograph</b>
+  <a href="#about">About</a><a href="#how">How it works</a><a href="#download">Download</a><a href="#data">Data</a><a href="#help">Help</a><a href="#examples">Examples</a>
+  <span class="clock" id="clock">--:--</span>
+</nav>
+
+<main>
+  <section class="win" id="about">
+    <div class="title"><i class="box"></i><span>Selenograph</span></div>
+    <div class="body hero">
+      <canvas id="moon" width="96" height="96"></canvas>
+      <div>
+        <h1>Selenograph</h1>
+        <div class="cap">Lunar image registration · SIH 2026 · PS 26166</div>
+        <p class="lead" style="margin-top:10px">Co-registration of Chandrayaan-2 OHRC (0.25 m), TMC-2 (5 m) and IIRS (100 m) images to LRO reference mosaics. Runs that fail the fit checks are reported as No fit.</p>
+        <p class="lead">Source and reference differ in illumination, viewing geometry and scale. Each run matches tiles from coarse to fine, fits a transform, and checks it against held-out tiles before reporting an error.</p>
+        <div class="row">
+          <a class="btn def" href="#download">Download</a>
+          <a class="btn" href="#examples">View examples</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="win" id="features">
+    <div class="title"><i class="box"></i><span>01 · Features</span></div>
+    <div class="body grid">
+      <fieldset><legend>Projects</legend><p>One project per area: source product, reference mosaic, AOI.</p><p>Open it for images, last run and run history.</p></fieldset>
+      <fieldset><legend>Registration</legend><p>Tile matching (LoFTR, ORB, crater constellations), coarse to fine.</p><p>Homography fitted with MAGSAC.</p></fieldset>
+      <fieldset><legend>Illumination</legend><p>DEM re-lit at the source Sun angle.</p><p>Image representation (intensity, edges, cfog) selected per scene.</p></fieldset>
+      <fieldset><legend>Viewing geometry</legend><p>Cross-validated non-rigid residual field.</p><p>DEM parallax term for off-nadir views.</p></fieldset>
+      <fieldset><legend>Fit checks</legend><p>Held-out RMSE, scale and prior agreement, anchor count.</p><p>A run that fails is reported as No fit.</p></fieldset>
+      <fieldset><legend>Local</legend><p>Runs on your machine. No upload, no account.</p><p>Results are written next to the project.</p></fieldset>
+    </div>
+  </section>
+
+  <section class="win" id="how">
+    <div class="title"><i class="box"></i><span>02 · How it works</span></div>
+    <div class="body steps">
+      <div class="step"><div><b>Crop to the AOI</b><span>The source strip is cut to the area of interest using its control grid. Large strips are block-averaged to about the reference resolution.</span></div></div>
+      <div class="step"><div><b>Prior</b><span>The control grid gives a starting guess for where the strip sits on the reference. It can be kilometres off.</span></div></div>
+      <div class="step"><div><b>Capture</b><span>Several image representations are tried on the same tiles. The one on which most tiles agree on one shift is kept.</span></div></div>
+      <div class="step"><div><b>Refine</b><span>Coarse to fine: tiles are matched at higher resolution and a homography is refitted with MAGSAC at each stage.</span></div></div>
+      <div class="step"><div><b>Non-rigid and parallax</b><span>A smooth residual field and a DEM parallax term are added only if cross-validation shows they predict held-out tiles better.</span></div></div>
+      <div class="step"><div><b>Checks and output</b><span>Scale, anchor count and prior agreement are checked. A passing run writes a georeferenced GeoTIFF and tie points. Otherwise: No fit.</span></div></div>
+    </div>
+  </section>
+
+  <section class="win" id="download">
+    <div class="title"><i class="box"></i><span>03 · Download</span></div>
+    <div class="body grid">
+      <fieldset><legend>Windows</legend>
+        <p>Windows 10 or 11, 64-bit.</p>
+        <div class="row" style="margin-top:6px"><a class="btn def" id="dl" href="downloads/Selenograph-windows-x64.zip" download>Download for Windows</a></div>
+        <p class="cap" style="margin-top:8px">Unzip and run <span class="mono">Selenograph.exe</span>. About 220 MB download.</p>
+      </fieldset>
+      <fieldset><legend>Requirements</legend>
+        <div class="tbl"><table>
+          <tr><th>Item</th><th>Needed</th></tr>
+          <tr><td>System</td><td>Windows 10/11, 64-bit</td></tr>
+          <tr><td>Python</td><td>not needed (bundled)</td></tr>
+          <tr><td>Disk</td><td>≈ 600 MB installed</td></tr>
+          <tr><td>Source and reference</td><td>not included, see Data</td></tr>
+        </table></div>
+      </fieldset>
+      <fieldset><legend>First start</legend>
+        <p>The first launch takes about 20 seconds while the built-in registration service starts. It runs locally in a minimised window; close the app and it stops.</p>
+        <p class="cap">Projects and results are stored in <span class="mono">%LOCALAPPDATA%\Selenograph</span>.</p>
+      </fieldset>
+    </div>
+  </section>
+
+  <section class="win" id="data">
+    <div class="title"><i class="box"></i><span>04 · Data</span></div>
+    <div class="body">
+      <p>The app does not ship imagery. A project needs a <b>source</b> product and a <b>reference</b> mosaic, downloaded separately.</p>
+      <div class="grid">
+        <fieldset class="links"><legend>Source: Chandrayaan-2</legend>
+          <p>OHRC, TMC-2 and IIRS products (PDS4) from ISSDC PRADAN. Download the product folder, including its <span class="mono">geometry</span> folder.</p>
+          <a href="https://pradan.issdc.gov.in/ch2/protected/payload.xhtml" target="_blank" rel="noopener">PRADAN: Chandrayaan-2 payload data ↗</a>
+          <p class="cap">An ISSDC PRADAN account is required.</p>
+        </fieldset>
+        <fieldset class="links"><legend>Reference: LRO</legend>
+          <p>LROC NAC and WAC mosaics. Any georeferenced GeoTIFF works as a reference.</p>
+          <a href="https://quickmap.lroc.im-ldi.com/" target="_blank" rel="noopener">LROC QuickMap ↗</a>
+          <a href="https://trek.nasa.gov/moon/" target="_blank" rel="noopener">NASA Moon Trek (WAC global, NAC polar mosaics) ↗</a>
+          <a href="https://wms.lroc.asu.edu/lroc/rdr_product_select" target="_blank" rel="noopener">LROC archive (RDR products) ↗</a>
+        </fieldset>
+        <fieldset class="links"><legend>Elevation (optional)</legend>
+          <p>A DEM enables the re-lit layer and the parallax term.</p>
+          <a href="https://planetarymaps.usgs.gov/mosaic/Lunar_LRO_LOLA_Global_LDEM_118m_Mar2014.tif" target="_blank" rel="noopener">LOLA global DEM, 118 m (GeoTIFF) ↗</a>
+          <a href="https://pgda.gsfc.nasa.gov/data/LOLA_20mpp/LDEM_80S_20MPP_ADJ.TIF" target="_blank" rel="noopener">LOLA south polar DEM, 20 m (GeoTIFF) ↗</a>
+        </fieldset>
+      </div>
+    </div>
+  </section>
+
+  <section class="win" id="help">
+    <div class="title"><i class="box"></i><span>05 · Help</span></div>
+    <div class="body grid">
+      <fieldset><legend>New project</legend><p>File ▸ New project. Pick the source folder, then Fill from source to take the AOI from the product footprint. Set the reference GeoTIFF.</p></fieldset>
+      <fieldset><legend>Run</legend><p>Open a project and press Run. The banner shows the stage and elapsed time.</p></fieldset>
+      <fieldset><legend>No fit</legend><p>Source has no contrast, or too little overlap with the reference. The run page lists what was tried.</p></fieldset>
+      <fieldset><legend>Reading the result</legend><p>RMSE is the residual of inlier matches. Held-out RMSE is the error on tiles not used for the fit. There is no ground truth for real pairs.</p></fieldset>
+    </div>
+  </section>
+
+  <section class="win" id="examples">
+    <div class="title"><i class="box"></i><span>06 · Examples</span></div>
+    <div class="body">
+      <p class="cap">Outputs of real registration runs on Chandrayaan-2 data. Drag the bar to compare the reference with the registered source.</p>
+      <div id="exList"></div>
+    </div>
+  </section>
+</main>
+
+<footer><span>Selenograph 1.0</span><span>Smart India Hackathon 2026 · PS 26166</span></footer>
+
+<script>
+const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target)}}),{threshold:.05});
+document.querySelectorAll('.win').forEach(w=>io.observe(w));
+const clk=document.getElementById('clock');
+const tick=()=>clk.textContent=new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});tick();setInterval(tick,20000);
+(function(){
+  const c=document.getElementById('moon'),x=c.getContext('2d'),n=96,r=44,B=[[0,8,2,10],[12,4,14,6],[3,11,1,9],[15,7,13,5]];
+  const img=x.createImageData(n,n);
+  for(let j=0;j<n;j++)for(let i=0;i<n;i++){
+    const dx=(i-n/2)/r,dy=(j-n/2)/r,d=dx*dx+dy*dy,o=(j*n+i)*4;let v=255;
+    if(d<=1){const z=Math.sqrt(1-d),l=Math.max(0,.15+.95*(dx*-.5+z*.85));
+      const cr=Math.sin(i*.55)*Math.sin(j*.47)*.07;
+      v=(l+cr)*16>B[j%4][i%4]+.5?255:20}
+    else if(d<1.06)v=20;
+    img.data[o]=img.data[o+1]=img.data[o+2]=v;img.data[o+3]=255}
+  x.putImageData(img,0,0);
+})();
+
+/* ---- examples: images in img/<key>/<name>.jpg ---- */
+const EX=[{"key": "tycho", "title": "Tycho crater", "desc": "TMC-2 to LROC NAC mosaic (5 m)", "rmse": 4.4, "inl": 4496, "mat": 6358, "held": 6.194, "rep": "edges", "relit": true, "imgs": ["reference", "warped", "checker", "blend", "footprint", "residuals", "matches_source"], "src": "TMC-2 3.86 m", "ref": "LROC NAC 5 m", "time": 110}, {"key": "ohrc", "title": "OHRC strip 2024-11-15", "desc": "OHRC 0.24 m to LROC NAC (4.2 m)", "rmse": 3.5, "inl": 248, "mat": 285, "held": 5.361, "rep": "intensity+edges", "relit": true, "imgs": ["reference", "warped", "checker", "blend", "footprint", "residuals", "matches_source"], "src": "OHRC 0.24 m", "ref": "LROC NAC 4.2 m", "time": 75}, {"key": "ohrc2", "title": "OHRC strip 2026-07-21", "desc": "OHRC 0.25 m to LROC NAC (4.2 m)", "rmse": 4.8, "inl": 657, "mat": 786, "held": 2.258, "rep": "intensity", "relit": true, "imgs": [], "src": "OHRC 0.25 m", "ref": "LROC NAC 4.2 m", "time": 91}];
+const PLOTS={
+ footprint:['Footprint','Red: source strip after the fitted transform. Orange grid: source pixel grid warped by it. Blue dashed: where the control-grid prior places the strip. Yellow: matched locations.'],
+ matches_source:['Matches','Locations of the tile matches used to fit the transform.'],
+ residuals:['Residuals','Per-match error of the inliers against the fitted model.'],
+ checker:['Checkerboard','Alternating tiles of reference and warped source. Craters and edges should continue across tile boundaries.']
+};
+const MODES=[['swipe','Swipe'],['fade','Blend'],['checker','Checkerboard'],['footprint','Footprint'],['matches_source','Matches'],['residuals','Residuals']];
+const src=(k,n)=>'img/'+k+'/'+n+'.jpg';
+function imgEl(s,alt){const i=new Image();i.alt=alt;i.draggable=false;i.onerror=()=>{i.alt='Image not found: '+s};i.src=s;return i}
+function tag(t,side){const d=document.createElement('div');d.className='tag';d.textContent=t;d.style[side]='6px';return d}
+function countUp(el,to,dec,ms){const t0=Date.now(),h=setInterval(()=>{const k=Math.min(1,(Date.now()-t0)/ms);el.textContent=(to*(1-Math.pow(1-k,3))).toFixed(dec);if(k>=1)clearInterval(h)},30)}
+function h(tagName,cls,html){const d=document.createElement(tagName);if(cls)d.className=cls;if(html!=null)d.innerHTML=html;return d}
+
+function buildExample(e,idx){
+  const w=h('div','ex');
+  w.appendChild(h('h2',null,e.title+' <span class="cap" style="font-weight:400">· '+e.desc+'</span>'));
+  const lc=h('div','lcds');
+  [['RMSE',e.rmse,'m'],['Held-out',e.held,'m'],['Inliers',e.inl,'/ '+e.mat]].forEach((x,i)=>{
+    const c=h('div','lcd','<small>'+x[0]+'</small><b>'+(x[1]==null?'n/a':x[1].toFixed(i===2?0:1))+'</b><i>'+(x[1]==null?'':x[2])+'</i>');
+    lc.appendChild(c);
+  });
+  w.appendChild(lc);
+  const demo=h('div','demo');demo.style.marginTop='14px';
+  const left=h('div'),right=h('div');
+  const seg=h('div','seg'),box=h('div','shot'),ctl=h('div','ctl'),lab=h('span'),rng=h('input');
+  rng.type='range';rng.min=0;rng.max=100;rng.value=50;ctl.append(lab,rng);box.style.marginTop='10px';
+  const ttl=h('h2'),cap=h('p');cap.style.color='var(--ink2)';
+  const tbl=h('div','tbl','<table><tr><th>Parameter</th><th>Value</th></tr>'+[['Source',e.src],['Reference',e.ref],['Matches',e.mat],['Inliers',e.inl+' ('+Math.round(100*e.inl/e.mat)+'%)'],['Representation',e.rep||'n/a'],['Re-lit DEM',e.relit?'used':'not used'],['Run time',e.time+' s']].map(r=>'<tr><td>'+r[0]+'</td><td>'+r[1]+'</td></tr>').join('')+'</table>');
+  right.append(ttl,cap,tbl);left.append(seg,box,ctl);demo.append(left,right);w.appendChild(demo);
+
+  function setMode(m){
+    [...seg.children].forEach(b=>b.setAttribute('aria-pressed',b.dataset.m===m));
+    box.innerHTML='';ctl.classList.add('hide');
+    if(m==='swipe'||m==='fade'){
+      const v=h('div','view'),top=h('div','top');
+      top.appendChild(imgEl(src(e.key,'warped'),'Warped source'));
+      v.append(imgEl(src(e.key,'reference'),'Reference'),top,tag('Reference','left'),tag('Warped source','right'));box.appendChild(v);ctl.classList.remove('hide');
+      if(m==='swipe'){
+        const g=h('div','grab');v.appendChild(g);
+        const set=p=>{p=Math.max(0,Math.min(100,p));top.style.clipPath='inset(0 0 0 '+p+'%)';g.style.left='calc('+p+'% - 1px)';rng.value=p};
+        let drag=false;const move=ev=>{const r=v.getBoundingClientRect();set((ev.clientX-r.left)/r.width*100)};
+        v.onpointerdown=ev=>{drag=true;v.setPointerCapture(ev.pointerId);move(ev)};v.onpointermove=ev=>drag&&move(ev);v.onpointerup=()=>drag=false;
+        rng.oninput=()=>set(+rng.value);lab.textContent='Drag the bar to compare';set(50);
+        ttl.textContent='Swipe compare';cap.textContent='Left of the bar: reference. Right: the source warped by the fitted transform. Features should continue across the bar.';
+      }else{
+        top.style.clipPath='none';const set=p=>top.style.opacity=p/100;
+        rng.oninput=()=>set(+rng.value);rng.value=50;set(50);lab.textContent='Reference ↔ warped source';
+        ttl.textContent='Blend';cap.textContent='Fade between the reference and the warped source.';
+      }
+    }else{
+      box.appendChild(imgEl(src(e.key,m),PLOTS[m][0]));ttl.textContent=PLOTS[m][0];cap.textContent=PLOTS[m][1];
+    }
+  }
+  MODES.forEach(m=>{const b=h('button',null,m[1]);b.dataset.m=m[0];b.onclick=()=>setMode(m[0]);seg.appendChild(b)});
+  setMode('swipe');
+  return w;
+}
+EX.forEach((e,i)=>document.getElementById('exList').appendChild(buildExample(e,i)));
+</script>
+</body>
+</html>

@@ -5,9 +5,10 @@ fit) and how long each stage takes. Not part of the pipeline -- a trace for
 tuning the accuracy-improvement stages added on top of the real end-to-end
 run. See CLAUDE.md.
 
-Usage: python -u scripts/diag_match_stages.py   (-u so timing prints show up
-immediately instead of waiting for Python's full-buffering on a redirected
-stdout to flush)
+Usage: python -u scripts/diag_match_stages.py [config_name]   (-u so timing
+prints show up immediately instead of waiting for Python's full-buffering on
+a redirected stdout to flush; config_name is a file under configs/, default
+"default.yaml")
 """
 
 import sys
@@ -45,7 +46,8 @@ def _mark(label: str) -> None:
 
 
 ROOT = Path(__file__).parents[1]
-with open(ROOT / "configs" / "default.yaml") as f:
+config_name = sys.argv[1] if len(sys.argv) > 1 else "default.yaml"
+with open(ROOT / "configs" / config_name) as f:
     config = yaml.safe_load(f)
 
 source_meta, reference_meta = load_metadata(config["source"], config["reference"])

@@ -18,7 +18,11 @@ from dataclasses import dataclass
 import numpy as np
 from skimage.transform import rescale
 
-MAX_REFERENCE_RESIZE = 4.0  # skip pyramid levels needing a more extreme reference resample
+MAX_REFERENCE_RESIZE = 5.0  # skip pyramid levels needing a more extreme reference resample -- see
+# CLAUDE.md's second-AOI section: at 4.0 this was a near-miss cutoff (a second-AOI level whose
+# true ratio was 4.72x got skipped over a source GSD difference of under 1 m/px), collapsing a
+# whole AOI to a single near-native-resolution level with no coarse anchor. 5.0 still excludes the
+# genuinely unreasonable resizes (e.g. 19x) this guard exists for.
 
 
 @dataclass

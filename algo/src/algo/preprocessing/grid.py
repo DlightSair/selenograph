@@ -22,6 +22,7 @@ from pathlib import Path
 import numpy as np
 import pyproj
 import rasterio
+from rasterio.enums import Resampling
 from rasterio.transform import rowcol
 from rasterio.windows import Window
 
@@ -47,6 +48,36 @@ def load_geometry_grid(csv_path: str | Path) -> ControlGrid:
             samples.append(int(row["Pixel"]))
             lines.append(int(row["Scan"]))
     return ControlGrid(np.array(lons), np.array(lats), np.array(samples), np.array(lines))
+
+
+def corner_control_grid(label_path: str | Path, step: int = 100) -> ControlGrid:
+    """A synthetic control grid for products that ship none (RAW level: the label states only the four
+    corner coordinates). Positions are bilinearly interpolated between the corners in a stereographic plane
+    centred on the strip (so a strip that crosses the pole is still straight), which is good to a few km --
+    a poorer prior than the product grid, so the matcher's wide-capture rescue is what makes it usable."""
+    from algo.preprocessing.metadata import parse_pds4_label
+
+    meta = parse_pds4_label(label_path)
+    if not meta.footprint or len(meta.footprint) != 4 or not meta.shape:
+        raise ValueError(f"{label_path}: no corner coordinates / shape in the label, cannot build a geometry")
+    lines, samples = meta.shape
+    lat = np.radians([c[0] for c in meta.footprint])
+    lon = np.radians([c[1] for c in meta.footprint])
+    vec = np.stack([np.cos(lat) * np.cos(lon), np.cos(lat) * np.sin(lon), np.sin(lat)], axis=1).mean(axis=0)
+    lat_c = math.degrees(math.asin(vec[2] / np.linalg.norm(vec)))
+    lon_c = math.degrees(math.atan2(vec[1], vec[0]))
+    proj = pyproj.Proj(f"+proj=stere +lat_0={lat_c} +lon_0={lon_c} +a={MOON_RADIUS_M} +b={MOON_RADIUS_M} +no_defs")
+    xy = np.array([proj(c[1], c[0]) for c in meta.footprint])  # UL, UR, LR, LL
+    ul, ur, lr, ll = xy
+
+    ls = np.unique(np.append(np.arange(0, lines, step), lines - 1))
+    ss = np.unique(np.append(np.arange(0, samples, max(step // 2, 25)), samples - 1))
+    sg, lg = np.meshgrid(ss, ls)
+    fr, fc = (lg / max(lines - 1, 1)).ravel(), (sg / max(samples - 1, 1)).ravel()
+    pts = ((1 - fr)[:, None] * ((1 - fc)[:, None] * ul + fc[:, None] * ur)
+           + fr[:, None] * ((1 - fc)[:, None] * ll + fc[:, None] * lr))
+    lons, lats = proj(pts[:, 0], pts[:, 1], inverse=True)
+    return ControlGrid(np.mod(np.asarray(lons), 360.0), np.asarray(lats), sg.ravel().astype(int), lg.ravel().astype(int))
 
 
 def bbox_to_window(
@@ -76,6 +107,38 @@ def bbox_to_window(
     return row_start, row_stop, col_start, col_stop
 
 
+def read_envi_wavelengths(label_path: str | Path) -> list[float] | None:
+    """Band centres (nm) from the ENVI .hdr that sits next to a PDS4 qube (IIRS), if any."""
+    import re
+
+    hdr = Path(label_path).with_suffix(".hdr")
+    if not hdr.exists():
+        return None
+    m = re.search(r"wavelength\s*=\s*\{([^}]*)\}", hdr.read_text(), flags=re.S)
+    return [float(v) for v in " ".join(m.group(1).split()).split(",")] if m else None
+
+
+def select_bands(label_path: str | Path, count: int, band_range_nm: tuple[float, float] | None) -> list[int]:
+    """1-based band indexes to average into the single panchromatic image the matcher works on.
+    Single-band products -> [1]. Hyperspectral cubes (IIRS, 256 bands, 0.7-5.0 um) -> the bands inside
+    `band_range_nm` (default 0.9-1.6 um: solar-reflected light, good signal, no thermal emission)."""
+    if count == 1:
+        return [1]
+    waves = read_envi_wavelengths(label_path)
+    lo, hi = band_range_nm or (900.0, 1600.0)
+    if waves and len(waves) == count:
+        picked = [i + 1 for i, w in enumerate(waves) if lo <= w <= hi]
+        if picked:
+            return picked
+    return list(range(1, count + 1))[: max(1, count // 4)]
+
+
+def decimation_for(window: tuple[int, int, int, int], max_pixels: float = 60e6, min_factor: int = 1) -> int:
+    """Integer block-average factor so a crop stays under `max_pixels` (a 100k-line OHRC strip is >1 Gpx)."""
+    r0, r1, c0, c1 = window
+    return max(int(min_factor), int(np.ceil(np.sqrt(max((r1 - r0) * (c1 - c0) / max_pixels, 1.0)))))
+
+
 def crop_source_to_aoi(
     label_path: str | Path,
     grid_csv_path: str | Path,
@@ -84,24 +147,70 @@ def crop_source_to_aoi(
     lon_min: float,
     lon_max: float,
     margin_px: int = 200,
+    decimation: int | str = 1,
+    band_range_nm: tuple[float, float] | None = None,
+    rows: tuple[int, int] | None = None,
+    min_decimation: int = 1,
+    destripe: bool = False,
 ) -> tuple[np.ndarray, tuple[int, int, int, int]]:
     """Windowed read of the source raster (opened via its PDS4 .xml label,
     since raw .img files have no self-describing header) covering the AOI.
     Returns (cropped_array, (row_start, row_stop, col_start, col_stop)) in the
     original full-strip pixel grid, for reference_window_for_source_window and
-    for mapping a later match coordinate back into the full strip."""
-    grid = load_geometry_grid(grid_csv_path)
+    for mapping a later match coordinate back into the full strip.
+
+    `decimation` > 1 (or "auto") block-averages the crop on read so huge strips (OHRC, 0.26 m/px)
+    fit in memory; the window stays in full-resolution pixels and `decimation_matrix` gives the
+    mapping back. `destripe` removes detector-column gain stripes (push-broom IIRS). `rows` overrides the lat/lon box with an explicit line range (for polar strips whose
+    lon/lat box is ill-defined). Multi-band cubes are averaged over `band_range_nm`."""
+    grid = grid_csv_path if isinstance(grid_csv_path, ControlGrid) else load_geometry_grid(grid_csv_path)
     row_start, row_stop, col_start, col_stop = bbox_to_window(
         grid, lat_min, lat_max, lon_min, lon_max, margin_px
     )
+    if rows is not None:
+        row_start, row_stop = int(rows[0]), int(rows[1])
+        col_start, col_stop = 0, int(grid.samples.max()) + 1
 
     with rasterio.open(label_path) as ds:
         row_stop = min(row_stop, ds.height)
         col_stop = min(col_stop, ds.width)
         window = Window(col_start, row_start, col_stop - col_start, row_stop - row_start)
-        array = ds.read(1, window=window)
+        win_tuple = (row_start, row_stop, col_start, col_stop)
+        d = decimation_for(win_tuple, min_factor=min_decimation) if decimation == "auto" else int(decimation)
+        out_hw = (int(np.ceil(window.height / d)), int(np.ceil(window.width / d))) if d > 1 else None
+        bands = select_bands(label_path, ds.count, band_range_nm)
+        acc = None
+        for chunk in (bands[i:i + 12] for i in range(0, len(bands), 12)):
+            kw = {"out_shape": (len(chunk),) + out_hw, "resampling": Resampling.average} if out_hw else {}
+            part = ds.read(chunk, window=window, **kw).astype(np.float32)
+            s = part.sum(axis=0)
+            acc = s if acc is None else acc + s
+        array = acc / len(bands) if len(bands) > 1 else (acc if ds.dtypes[0] == "float32" else acc.astype(ds.dtypes[0]))
 
+    if destripe:
+        array = remove_column_stripes(array)
     return array, (row_start, row_stop, col_start, col_stop)
+
+
+def remove_column_stripes(img: np.ndarray, trend_sigma: float = 12.0) -> np.ndarray:
+    """Divide out per-column gain stripes of a push-broom image: the column median profile minus its own
+    smooth trend (broad cross-track brightness changes are real terrain, one-pixel-wide stripes are the
+    detector)."""
+    from scipy.ndimage import gaussian_filter1d
+
+    a = img.astype(np.float32)
+    valid = a > 0
+    prof = np.array([np.median(a[:, j][valid[:, j]]) if valid[:, j].any() else 0.0 for j in range(a.shape[1])])
+    trend = gaussian_filter1d(prof, trend_sigma, mode="nearest")
+    gain = np.where((prof > 0) & (trend > 0), trend / np.maximum(prof, 1e-6), 1.0)
+    return a * gain[None, :].astype(np.float32)
+
+
+def decimation_matrix(window: tuple[int, int, int, int], array_shape: tuple[int, int]) -> np.ndarray:
+    """3x3 matrix taking pixel coords of a (possibly decimated) crop to full-resolution crop coords."""
+    r0, r1, c0, c1 = window
+    fy, fx = (r1 - r0) / array_shape[0], (c1 - c0) / array_shape[1]
+    return np.array([[fx, 0, 0.5 * fx - 0.5], [0, fy, 0.5 * fy - 0.5], [0, 0, 1.0]])
 
 
 def _nearest_lonlat(grid: ControlGrid, line: int, sample: int) -> tuple[float, float]:
@@ -180,6 +289,50 @@ def reference_window_for_source_window(
         max(min(ref_cols) - margin_px, 0),
         max(ref_cols) + margin_px,
     )
+
+
+def control_grid_prior_homography(
+    grid: ControlGrid,
+    source_window: tuple[int, int, int, int],
+    reference_transform,
+    reference_crs,
+    max_points: int = 2000,
+) -> np.ndarray | None:
+    """Independent estimate of the source-crop -> reference-raster mapping,
+    straight from the same control grid used for cropping: every grid point
+    inside `source_window` knows its (line, sample) and its lat/lon, so
+    projecting the lat/lon into the reference raster gives a (crop-native
+    source xy -> absolute reference pixel xy) correspondence set, fit by
+    plain least squares. Only as accurate as the product's uncorrected
+    pointing (a few hundred metres on a good product), so it is not ground
+    truth -- but it is *independent of the image matching*, which makes it
+    a strong sanity check on a matcher-derived fit: a real registration
+    lands near it (Tycho: 40-55 px), a wrong one lands thousands of px away."""
+    import cv2
+
+    row_start, row_stop, col_start, col_stop = source_window
+    inside = (
+        (grid.lines >= row_start) & (grid.lines < row_stop) & (grid.samples >= col_start) & (grid.samples < col_stop)
+    )
+    idx = np.flatnonzero(inside)
+    if len(idx) < 4:
+        return None
+    if len(idx) > max_points:
+        idx = idx[:: int(np.ceil(len(idx) / max_points))]
+
+    transformer = pyproj.Transformer.from_crs(_MOON_GEOGRAPHIC, reference_crs, always_xy=True)
+    anchor_x, anchor_y = reference_transform.c, reference_transform.f
+    src, dst = [], []
+    for i in idx:
+        x, y = _project_wrap_safe(
+            transformer, reference_crs, grid.lons[i], grid.lats[i], anchor_x, anchor_y
+        )
+        ref_row, ref_col = rowcol(reference_transform, x, y)
+        src.append((grid.samples[i] - col_start, grid.lines[i] - row_start))
+        dst.append((ref_col, ref_row))
+
+    homography, _ = cv2.findHomography(np.array(src, np.float32), np.array(dst, np.float32), 0)
+    return homography
 
 
 def crop_reference_to_window(reference_path: str | Path, window: tuple[int, int, int, int]) -> np.ndarray:

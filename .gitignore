@@ -3,6 +3,13 @@ data/raw/
 data/dem/
 data/processed/
 data/results/
+data/results_experiments/
+data/previews/
+data/benchmark/
+data/*.zip
+# PRADAN download scripts embed session cookies
+data/*.sh
+data/ch2_*/
 !data/**/.gitkeep
 
 # pretrained weights

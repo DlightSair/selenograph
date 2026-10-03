@@ -22,13 +22,19 @@ from pathlib import Path
 
 import numpy as np
 
+from algo.matching import loftr_onnx
+
 try:
     import kornia.feature as KF
     import torch
 
-    _AVAILABLE = True
+    _TORCH = True
 except ImportError:
-    _AVAILABLE = False
+    _TORCH = False
+
+# ONNX Runtime is preferred (no torch needed, so the packaged app stays small); torch/kornia is the fallback.
+_USE_ONNX = loftr_onnx.available() and not __import__("os").environ.get("ALGO_LOFTR_TORCH")
+_AVAILABLE = _USE_ONNX or _TORCH
 
 _CHECKPOINT_PATH = Path(__file__).parents[3] / "models" / "loftr_outdoor.ckpt"
 _MAX_TILE_PIXELS = 1_000_000  # ~1000x1000; see match_learned's size-guard comment
@@ -66,6 +72,13 @@ def _get_matcher():
     return _matcher
 
 
+def _normalise(image: np.ndarray) -> np.ndarray:
+    h, w = image.shape
+    cropped = image[: (h // 8) * 8, : (w // 8) * 8].astype(np.float32)
+    span = cropped.max() - cropped.min()
+    return (cropped - cropped.min()) / (span if span > 0 else 1.0)
+
+
 def _to_tensor(image: np.ndarray):
     """Grayscale float array -> 1x1xHxW tensor in [0, 1], H/W rounded down to
     a multiple of 8 (LoFTR's internal downsampling requirement)."""
@@ -93,6 +106,10 @@ def match_learned(level, matching_cfg) -> list[Match]:
         raise NotImplementedError(
             f"tile too large for LoFTR ({level.source_tile.shape} / {level.reference_tile.shape})"
         )
+
+    if _USE_ONNX:
+        k0, k1, conf = loftr_onnx.match(_normalise(level.source_tile), _normalise(level.reference_tile))
+        return [Match(tuple(k0[i]), tuple(k1[i]), float(conf[i])) for i in range(len(conf))]
 
     matcher = _get_matcher()
     source_t = _to_tensor(level.source_tile)

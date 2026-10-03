@@ -32,6 +32,11 @@ class ImageMetadata:
     gsd: float | None  # metres/pixel estimate
     footprint: list[tuple[float, float]] | None  # [(lat, lon), ...] corners, UL/UR/LR/LL
     shape: tuple[int, int] | None  # (lines, samples)
+    roll: float | None = None  # spacecraft attitude at acquisition, degrees (viewing geometry)
+    pitch: float | None = None
+    yaw: float | None = None
+    altitude_km: float | None = None
+    camera: str | None = None  # TMC-2 view: "n" nadir, "f" forward (+25 deg), "a" aft (-25 deg)
 
 
 def parse_pds4_label(label_path: str | Path) -> ImageMetadata:
@@ -50,9 +55,19 @@ def parse_pds4_label(label_path: str | Path) -> ImageMetadata:
             break
 
     shape = _parse_shape(root)
-    gsd = _estimate_gsd(footprint, shape) if footprint and shape else None
+    # the label states the pixel size directly; the footprint-based estimate is only a fallback
+    # (and is wrong near the poles, where corner longitudes wrap)
+    gsd = _find_float(params, "isda:pixel_resolution")
+    if gsd is None:
+        gsd = _estimate_gsd(footprint, shape) if footprint and shape else None
+    name = Path(label_path).name
+    camera = name[10] if name.startswith("ch2_tmc_n") and len(name) > 10 else None  # ch2_tmc_nXY...: Y = n|f|a
 
-    return ImageMetadata(sun_azimuth, sun_elevation, gsd, footprint, shape)
+    return ImageMetadata(
+        sun_azimuth, sun_elevation, gsd, footprint, shape,
+        roll=_find_float(params, "isda:roll"), pitch=_find_float(params, "isda:pitch"), yaw=_find_float(params, "isda:yaw"),
+        altitude_km=_find_float(params, "isda:spacecraft_altitude"), camera=camera,
+    )
 
 
 def load_reference_metadata(raster_path: str | Path) -> ImageMetadata:
@@ -102,9 +117,9 @@ def _parse_shape(root) -> tuple[int, int] | None:
         name = axis.find("pds:axis_name", _NS)
         elements = axis.find("pds:elements", _NS)
         if name is not None and elements is not None:
-            dims[name.text] = int(elements.text)
-    if "Line" in dims and "Sample" in dims:
-        return (dims["Line"], dims["Sample"])
+            dims[name.text.strip().lower()] = int(elements.text)
+    if "line" in dims and "sample" in dims:
+        return (dims["line"], dims["sample"])
     return None
 
 

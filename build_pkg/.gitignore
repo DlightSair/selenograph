@@ -1,0 +1,5 @@
+dist/
+work/
+Selenograph/
+*.zip
+*.spec

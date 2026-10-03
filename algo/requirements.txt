@@ -3,7 +3,7 @@ numpy
 scipy
 opencv-contrib-python   # contrib build needed for cv2.USAC_MAGSAC (Stage 5)
 scikit-image
-matplotlib              # diagnostic overlays only (scripts/visualize_run.py)
+matplotlib              # API visualizations, benchmark charts, diagnostic overlays
 
 # geospatial / raster IO + PDS metadata
 rasterio
@@ -16,6 +16,10 @@ kornia          # has LoFTR built in: kornia.feature.LoFTR
 
 # config / CLI
 pyyaml
+
+# local API server (algo.api.server) — wraps pipeline.run for the desktop app
+fastapi
+uvicorn
 
 # tests
 pytest

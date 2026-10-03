@@ -1,0 +1,40 @@
+# SUPPLEMENTARY reference (Chang'e-2, not LRO): cross-check of the LRO-referenced project of the same strip.
+# TMC-2 aft strip, 2026-09-03, ~81N 233E (mid-strip; the label corners average to 203E, which is NOT the strip centre), sun el 7 deg.
+# Reference: Chang'e-2 7 m ortho mosaic north polar layer (tiles to 16.7 m/px), built by scripts/fetch_trek_polar_nac.py --layer ce2_np --segment 0.45 0.55.
+aoi:
+  name: strip_n81e233_ce2
+  lat_min: 80.08
+  lat_max: 82.22
+  lon_min: 229.95
+  lon_max: 237.46
+source:
+  instrument: TMC2
+  product_type: calibrated
+  path: ../data/raw/chandrayaan2/tmc2/ch2_tmc_nra_20260903T1039028305_d_img_d18
+reference:
+  provider: chang_e2_ortho_mosaic
+  layer: CE2_OrthoMosaic_7m_NP
+  path: ../data/raw/lro_reference/strip_n81e233/ce2/strip_n81e233_CE2_NP.tif
+dem:
+  enabled: false
+pyramid:
+  levels: 4
+  downsample_factor: 4
+matching:
+  primary: loftr
+  fallback: classical
+  confidence_threshold: 0.5
+  crater:
+    num_peaks: 40
+    min_distance: 8
+    smooth_sigma: 2
+    ratio_test: 0.75
+anms:
+  grid_size: 8
+  max_matches_per_tile: 25
+geometry:
+  transform: homography
+  ransac: magsac
+  reproj_threshold_px: 3.0
+evaluation:
+  output_dir: ../data/results/

@@ -1,0 +1,51 @@
+# Pipeline configuration for the second AOI (generalization check -- see CLAUDE.md
+# "Reference data swap" / second-AOI section). Mirrors default.yaml (Tycho); see that
+# file's comments for what each stage does.
+
+aoi:
+  name: copernicus_crater
+  # Narrowed to the NAC mosaic's own coverage (lon 339.58-340.80, lat 9.11-11.39) plus a
+  # small margin, same reasoning as Tycho's AOI.
+  lat_min: 8.90
+  lat_max: 11.60
+  lon_min: 339.40
+  lon_max: 341.00
+
+source:
+  instrument: TMC2          # TMC2 | OHRC | IIRS
+  product_type: calibrated  # raw | calibrated | derived_dtm | derived_ortho
+  path: ../data/raw/chandrayaan2/tmc2/ch2_tmc_ncf_20240623T0707183819_d_img_d18
+
+reference:
+  provider: lroc_nac_roi_mosaic
+  layer: NAC_ROI_COPERNICLOB_E103N3402_5M   # controlled NAC mosaic, 5.00 m/px
+  path: ../data/raw/lro_reference/copernicus/nac/NAC_ROI_COPERNICLOB_E103N3402_5M.TIF
+
+dem:
+  enabled: false  # no Derived DTM for this AOI yet -- relief.py's confidence boost is a no-op, not a crash
+
+pyramid:
+  levels: 4
+  downsample_factor: 4
+
+matching:
+  primary: loftr           # loftr | classical
+  fallback: classical       # phase-congruency / RIFT-style, used on low-confidence tiles
+  confidence_threshold: 0.5
+  crater:                  # algo.matching.crater -- blob detection params, see module docstring
+    num_peaks: 40           # per polarity (bright+dark), per tile -- keep this small and sparse
+    min_distance: 8
+    smooth_sigma: 2
+    ratio_test: 0.75
+
+anms:
+  grid_size: 8              # tiles per axis for uniform-distribution enforcement
+  max_matches_per_tile: 25
+
+geometry:
+  transform: homography     # homography | affine | dtm_orthorectify
+  ransac: magsac            # magsac | ransac
+  reproj_threshold_px: 3.0
+
+evaluation:
+  output_dir: ../data/results/

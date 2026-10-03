@@ -1,0 +1,24 @@
+name: lunar_registration_desktop
+description: Desktop control panel for the Chandrayaan-2 / LRO registration pipeline.
+publish_to: "none"
+version: 0.1.0
+
+environment:
+  sdk: ">=3.3.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  http: ^1.2.0
+  intl: ^0.19.0
+  file_selector: ^1.0.3
+  path: ^1.9.0
+  cupertino_icons: ^2.0.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true

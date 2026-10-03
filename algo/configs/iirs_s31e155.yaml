@@ -1,0 +1,45 @@
+# Chandrayaan-2 IIRS hyperspectral strip (256 bands, 0.7-5.0 um, ~98 m/px, 250 samples wide) against the
+# LRO WAC global mosaic (100 m/px): scale ratio ~1, a very different sensor. The cube is averaged over
+# the solar-reflected bands (source.band_range_nm) into one panchromatic image.
+aoi:
+  name: iirs_s31e155
+  lat_min: -33.0
+  lat_max: -29.5
+  lon_min: 154.0
+  lon_max: 156.2
+
+source:
+  instrument: IIRS
+  product_type: calibrated
+  path: ../data/raw/chandrayaan2/iirs/ch2_iir_nci_20260715T2020241878_d_img_d18
+  band_range_nm: [900, 1600]
+
+reference:
+  provider: lroc_wac_mosaic
+  layer: LRO_WAC_Mosaic_Global_303ppd_v02
+  path: ../data/raw/lro_reference/iirs_s31e155/wac/iirs_s31e155_WAC_100M.tif
+
+dem:
+  enabled: false
+
+pyramid:
+  levels: 4
+  downsample_factor: 4
+
+matching:
+  primary: loftr
+  fallback: classical
+  confidence_threshold: 0.5
+  crater: {num_peaks: 40, min_distance: 8, smooth_sigma: 2, ratio_test: 0.75}
+
+anms:
+  grid_size: 8
+  max_matches_per_tile: 25
+
+geometry:
+  transform: homography
+  ransac: magsac
+  reproj_threshold_px: 3.0
+
+evaluation:
+  output_dir: ../data/results/
