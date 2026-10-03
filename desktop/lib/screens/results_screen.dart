@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/cupertino.dart' show CupertinoIcons;
+import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
@@ -45,6 +46,7 @@ class _ResultsScreenState extends State<ResultsScreen> {
   static const double _inspectorWidth = 380;
 
   Timer? _poll;
+  ({CalloutKind kind, String text})? _note;
 
   @override
   void initState() {
@@ -109,6 +111,29 @@ class _ResultsScreenState extends State<ResultsScreen> {
   /// have nothing for the visualizations to draw (`/runs/{id}/viz` fails).
   bool _hasFit(RunSummary run) => run.isDone && run.transform != null && !run.isNoFit;
 
+  Future<void> _openFolder() async {
+    try {
+      await widget.api.openRunFolder(widget.runId);
+    } catch (e) {
+      if (mounted) setState(() => _note = (kind: CalloutKind.error, text: 'Could not open the folder: $e'));
+    }
+  }
+
+  Future<void> _saveGeoTiff() async {
+    final loc = await getSaveLocation(
+      suggestedName: '${(_run?.config ?? 'registered').replaceAll('.yaml', '')}_registered.tif',
+      acceptedTypeGroups: const [XTypeGroup(label: 'GeoTIFF', extensions: ['tif', 'tiff'])],
+      confirmButtonText: 'Save',
+    );
+    if (loc == null) return;
+    try {
+      await widget.api.saveRegistered(widget.runId, loc.path);
+      if (mounted) setState(() => _note = (kind: CalloutKind.ok, text: 'Saved ${loc.path}'));
+    } catch (e) {
+      if (mounted) setState(() => _note = (kind: CalloutKind.error, text: 'Could not save the GeoTIFF: $e'));
+    }
+  }
+
   String _fmt(double? v, {int decimals = 2}) => v == null ? '—' : v.toStringAsFixed(decimals);
 
   /// Metres with more precision when small: 6.4, 0.31.
@@ -167,6 +192,11 @@ class _ResultsScreenState extends State<ResultsScreen> {
             ToolButton(icon: CupertinoIcons.refresh, label: 'Refresh', onPressed: _load),
           ],
         ),
+        if (_note != null)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+            child: Callout(kind: _note!.kind, title: _note!.text),
+          ),
         Expanded(child: run == null ? _loadingOrError() : _body(run)),
       ],
     );
@@ -408,6 +438,7 @@ class _ResultsScreenState extends State<ResultsScreen> {
       final params = _parametersPanel();
       if (params != null) out.add((params, 1));
       out.add((_transformPanel(run), 1));
+      out.add((_outputPanel(), 3));
     }
     out.add((_runPanel(run), 4));
     return out;
@@ -618,6 +649,25 @@ class _ResultsScreenState extends State<ResultsScreen> {
             const SizedBox(height: 6),
             const Note('This is the homography part only; the non-rigid correction is applied on top of it.'),
           ],
+        ],
+      ),
+    );
+  }
+
+  Widget _outputPanel() {
+    return Panel(
+      title: 'Output',
+      icon: CupertinoIcons.folder,
+      collapsible: true,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('registered.tif, tiepoints_geo.csv, transform.json and metrics.json are written for each run.', style: ui(size: 11.5)),
+          const SizedBox(height: 8),
+          Wrap(spacing: 8, runSpacing: 6, children: [
+            PushButton(label: 'Open folder', icon: CupertinoIcons.folder, onPressed: _openFolder, compact: true),
+            PushButton(label: 'Save GeoTIFF…', icon: CupertinoIcons.arrow_down_doc, onPressed: _saveGeoTiff, compact: true),
+          ]),
         ],
       ),
     );

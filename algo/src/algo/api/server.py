@@ -365,6 +365,27 @@ def get_overlay(run_id: str):
     return FileResponse(path, media_type="image/png")
 
 
+@app.get("/runs/{run_id}/registered.tif")
+def get_registered(run_id: str):
+    """The registered GeoTIFF of a finished run."""
+    path = RESULTS_DIR / Path(run_id).name / "registered.tif"
+    if not path.is_file():
+        raise HTTPException(404, f"run {run_id} has no registered.tif")
+    return FileResponse(path, media_type="image/tiff", filename="registered.tif")
+
+
+@app.post("/runs/{run_id}/open-folder")
+def open_run_folder(run_id: str) -> dict:
+    """Show the run's output folder in the system file browser (the service runs on the user's machine)."""
+    run_dir = RESULTS_DIR / Path(run_id).name
+    if not run_dir.is_dir():
+        raise HTTPException(404, f"no such run: {run_id}")
+    if not hasattr(os, "startfile"):
+        raise HTTPException(501, "opening folders is only supported on Windows")
+    os.startfile(run_dir)  # noqa: S606
+    return {"path": str(run_dir)}
+
+
 def _done_run_config(run_id: str) -> dict:
     run = _load_run(run_id)
     if run["status"] != "done":

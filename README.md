@@ -60,6 +60,8 @@ see [Data](#data).
 2. **Open the project, press Run.** The banner shows the stage and elapsed time.
 3. **View results.** The images sit side by side. The inspector on the right shows the metrics, the sanity
    checks and how the match was made. A run that could not be trusted is shown as No fit with the reason.
+4. **Get the output.** The *Output* panel in the inspector opens the run's folder or saves `registered.tif`
+   wherever you choose. Runs are stored in `%LOCALAPPDATA%\Selenograph\dataesults\<run id>\`.
 
 ## Data
 
@@ -153,6 +155,8 @@ The server listens on `127.0.0.1` (port 8000 when started by hand; the packaged 
 | `GET /footprint?path=` | lat/lon bounds of a source product |
 | `POST /runs`, `GET /runs`, `GET /runs/{id}` | start a run, list runs, read one run |
 | `GET /runs/{id}/overlay.png` | match overlay |
+| `GET /runs/{id}/registered.tif` | download the registered GeoTIFF |
+| `POST /runs/{id}/open-folder` | show the run's folder in Explorer |
 | `GET /runs/{id}/viz`, `GET /runs/{id}/viz/{name}.png` | result plots and sanity checks |
 | `GET /benchmarks` | synthetic benchmark summary |
 

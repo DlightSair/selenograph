@@ -285,6 +285,19 @@ void main() {
       await tester.pumpWidget(const SizedBox.shrink());
     });
 
+    testWidgets('results screen offers the output folder and GeoTIFF save', (tester) async {
+      _bigSurface(tester);
+      final api = ApiClient(client: MockClient((req) async {
+        if (req.url.path == '/runs/r1') return _json(_runJson('r1', _goodMetrics));
+        return _json({'detail': 'x'}, 500);
+      }));
+      await tester.pumpWidget(_app(ResultsScreen(runId: 'r1', api: api)));
+      await _settle(tester);
+      expect(find.text('Open folder'), findsOneWidget);
+      expect(find.text('Save GeoTIFF…'), findsOneWidget);
+      await tester.pumpWidget(const SizedBox.shrink());
+    });
+
     testWidgets('results screen fits a narrow window', (tester) async {
       _bigSurface(tester, width: 520, height: 900);
       final api = ApiClient(client: MockClient((req) async {

@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:http/http.dart' as http;
 
 import '../models/benchmark_summary.dart';
@@ -111,6 +112,27 @@ class ApiClient {
   }
 
   /// Direct URL for one rendered image of a run, for an `Image.network` widget.
+  /// Opens the run's output folder in Explorer and returns its path.
+  Future<String> openRunFolder(String runId) async {
+    final res = await _http.post(_uri('/runs/$runId/open-folder'));
+    _check(res);
+    return (_decode(res) as Map)['path'] as String;
+  }
+
+  /// Streams the run's registered GeoTIFF to [destPath] (it can be hundreds of MB).
+  Future<void> saveRegistered(String runId, String destPath) async {
+    final res = await _http.send(http.Request('GET', _uri('/runs/$runId/registered.tif')));
+    if (res.statusCode >= 400) {
+      throw ApiException('${res.statusCode}: ${await res.stream.bytesToString()}');
+    }
+    final sink = File(destPath).openWrite();
+    try {
+      await res.stream.pipe(sink);
+    } finally {
+      await sink.close();
+    }
+  }
+
   String vizImageUrl(String runId, String name) => '$baseUrl/runs/$runId/viz/$name.png';
 
   /// Lat/lon bounds (min lat, max lat, min lon, max lon) of a source product.
