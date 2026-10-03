@@ -43,10 +43,11 @@ Smart India Hackathon 2026, problem statement 26166.
 
 ### Windows application
 
-Download `Selenograph-windows-x64.zip` from the
-[Releases](../../releases) page, unzip it and run `Selenograph.exe`. Windows 10 or 11 (64-bit); about 415 MB
-installed. Python is not required: the registration service is bundled and starts hidden on a private local
-port when the app opens, and stops when the app closes. The first start takes about 20 seconds.
+Download `Selenograph-Setup.exe` from the [Releases](../../releases) page and run it. It installs for the
+current user (no administrator rights), adds a Start-menu entry and an optional desktop shortcut, and can be
+removed from Windows Settings. Windows 10 or 11 (64-bit); about 415 MB installed. Python is not required: the
+registration service is bundled and starts hidden on a private local port when the app opens, and stops when
+the app closes. The first start takes about 20 seconds.
 
 Projects and results are stored in `%LOCALAPPDATA%\Selenograph`. Source and reference imagery is not included;
 see [Data](#data).
@@ -180,8 +181,14 @@ cd ..\desktop
 flutter build windows --release
 ```
 
-Copy `desktop\build\windows\x64\runner\Release\*` into a folder,
-copy `build_pkg\dist\selenograph-server` into it as `server\`, and zip the folder.
+Copy `desktop\build\windows\x64\runner\Release\*` into `build_pkg\Selenograph\`, copy
+`build_pkg\dist\selenograph-server` into it as `server\`, then build the installer with
+[Inno Setup](https://jrsoftware.org/isinfo.php):
+
+```powershell
+cd build_pkg
+ISCC.exe installer.iss      # writes installer\Selenograph-Setup.exe
+```
 
 ## Repository layout
 
@@ -201,7 +208,7 @@ algo/
   configs/           project configuration template
   tests/
 desktop/             Flutter app
-build_pkg/           release packaging script
+build_pkg/           release packaging (server build script, installer script)
 website/             project website (static)
 docs/                benchmark chart
 ```
