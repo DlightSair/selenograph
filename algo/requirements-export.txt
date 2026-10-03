@@ -1,0 +1,6 @@
+# only for scripts/export_loftr_onnx.py (builds models/loftr_*.onnx once); not needed to run the app
+-r requirements.txt
+torch
+kornia
+onnx
+onnxscript

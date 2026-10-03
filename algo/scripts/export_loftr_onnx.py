@@ -9,7 +9,9 @@ not trace, so the network is split at those points:
     loftr_fine.onnx   : fine windows + coarse features -> refined fine features
     (the selection / gathering / soft-argmax in between is plain numpy: algo/matching/loftr_onnx.py)
 
-Needs torch + kornia + onnx (export machine only). The shipped app needs only onnxruntime.
+Downloads the official checkpoint first if models/loftr_outdoor.ckpt is missing (kornia's own URL is dead,
+so it comes from the official kornia HuggingFace org). Needs torch + kornia + onnx (pip install -r
+requirements-export.txt); the app itself needs only onnxruntime.
 """
 
 from __future__ import annotations
@@ -60,7 +62,19 @@ class Fine(torch.nn.Module):
         return g0[:, WW // 2, :], g1  # only image0's centre feature is used by the fine matcher
 
 
+def ensure_checkpoint():
+    if CKPT.exists():
+        return
+    import urllib.request
+
+    CKPT.parent.mkdir(parents=True, exist_ok=True)
+    url = "https://huggingface.co/kornia/loftr/resolve/main/loftr_outdoor.ckpt"
+    print("downloading", url)
+    urllib.request.urlretrieve(url, CKPT)
+
+
 def load():
+    ensure_checkpoint()
     m = KF.LoFTR(pretrained=None)
     m.load_state_dict(torch.load(CKPT, map_location="cpu")["state_dict"])
     return m.eval()

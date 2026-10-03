@@ -9,10 +9,8 @@ matplotlib              # API visualizations, benchmark charts, diagnostic overl
 rasterio
 pyproj
 
-# deep learning matcher (Stage 3 primary — pretrained, no training required)
-# checkpoint isn't on PyPI: run scripts/download_loftr_weights.py once after install
-torch
-kornia          # has LoFTR built in: kornia.feature.LoFTR
+# deep learning matcher (Stage 3 primary): LoFTR exported to ONNX, no torch needed at run time
+onnxruntime
 
 # config / CLI
 pyyaml

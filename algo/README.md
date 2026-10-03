@@ -7,7 +7,7 @@ known transform) and [../docs/results.md](../docs/results.md) (every real projec
 
 ## Setup
 
-Use Python 3.11 (rasterio/torch wheel availability lags on newer versions).
+Use Python 3.11 (rasterio wheel availability lags on newer versions). No torch is needed to run.
 
 ```bash
 cd algo
@@ -15,7 +15,9 @@ py -3.11 -m venv .venv
 .venv\Scripts\activate
 pip install -r requirements.txt
 pip install -e .
-python scripts/download_loftr_weights.py   # only needed for the legacy blind path (registration.mode: blind)
+# LoFTR runs from models/loftr_*.onnx (gitignored). Build them once (needs torch+kornia, see requirements-export.txt):
+pip install -r requirements-export.txt
+python scripts/export_loftr_onnx.py
 ```
 
 ## Run
