@@ -218,7 +218,7 @@ footer{max-width:1060px;margin:0 auto 30px;padding:0 16px;color:#fff;text-shadow
   <section class="win" id="examples">
     <div class="title"><i class="box"></i><span>06 · Examples</span></div>
     <div class="body">
-      <p class="cap">Outputs of real registration runs on Chandrayaan-2 data. Drag the bar to compare the reference with the registered source.</p>
+      <p class="cap">Outputs of real registration runs on Chandrayaan-2 data. Drag the bar to compare the reference with the registered source, or open <b>Pipeline</b> to step through the stages of the run.</p>
       <div id="exList"></div>
     </div>
   </section>
@@ -245,14 +245,16 @@ const tick=()=>clk.textContent=new Date().toLocaleTimeString([], {hour:'2-digit'
 })();
 
 /* ---- examples: images in img/<key>/<name>.jpg ---- */
-const EX=[{"key": "tycho", "title": "Tycho crater", "desc": "TMC-2 to LROC NAC mosaic (5 m)", "rmse": 4.4, "inl": 4496, "mat": 6358, "held": 6.194, "rep": "edges", "relit": true, "imgs": ["reference", "warped", "checker", "blend", "footprint", "residuals", "matches_source"], "src": "TMC-2 3.86 m", "ref": "LROC NAC 5 m", "time": 110}, {"key": "ohrc", "title": "OHRC strip 2024-11-15", "desc": "OHRC 0.24 m to LROC NAC (4.2 m)", "rmse": 3.5, "inl": 248, "mat": 285, "held": 5.361, "rep": "intensity+edges", "relit": true, "imgs": ["reference", "warped", "checker", "blend", "footprint", "residuals", "matches_source"], "src": "OHRC 0.24 m", "ref": "LROC NAC 4.2 m", "time": 75}, {"key": "ohrc2", "title": "OHRC strip 2026-07-21", "desc": "OHRC 0.25 m to LROC NAC (4.2 m)", "rmse": 4.8, "inl": 657, "mat": 786, "held": 2.258, "rep": "intensity", "relit": true, "imgs": [], "src": "OHRC 0.25 m", "ref": "LROC NAC 4.2 m", "time": 91}];
+const EX=[{"key": "tycho", "title": "Tycho crater", "desc": "TMC-2 to LROC NAC mosaic (5 m)", "rmse": 4.4, "inl": 4496, "mat": 6358, "held": 6.194, "rep": "edges", "relit": true, "imgs": ["reference", "warped", "checker", "blend", "footprint", "residuals", "matches_source"], "src": "TMC-2 3.86 m", "ref": "LROC NAC 5 m", "time": 110, "stages": ["01_inputs", "02_dem_relit_layer", "03_control_grid_prior", "04_representations", "05_tile_matching", "05b_one_tile_zncc", "06_robust_fit_inliers", "07_full_model_displacement", "08_registered", "09_before_after_residuals"]}, {"key": "ohrc", "title": "OHRC strip 2024-11-15", "desc": "OHRC 0.24 m to LROC NAC (4.2 m)", "rmse": 3.5, "inl": 248, "mat": 285, "held": 5.361, "rep": "intensity+edges", "relit": true, "imgs": ["reference", "warped", "checker", "blend", "footprint", "residuals", "matches_source"], "src": "OHRC 0.24 m", "ref": "LROC NAC 4.2 m", "time": 75, "stages": ["01_inputs", "02_dem_relit_layer", "03_control_grid_prior", "04_representations", "05_tile_matching", "05b_one_tile_zncc", "06_robust_fit_inliers", "07_full_model_displacement", "08_registered", "09_before_after_residuals"]}, {"key": "ohrc2", "title": "OHRC strip 2026-07-21", "desc": "OHRC 0.25 m to LROC NAC (4.2 m)", "rmse": 4.8, "inl": 657, "mat": 786, "held": 2.258, "rep": "intensity", "relit": true, "imgs": [], "src": "OHRC 0.25 m", "ref": "LROC NAC 4.2 m", "time": 91, "stages": ["01_inputs", "02_dem_relit_layer", "03_control_grid_prior", "04_representations", "05_tile_matching", "05b_one_tile_zncc", "06_robust_fit_inliers", "07_full_model_displacement", "08_registered", "09_before_after_residuals"]}, {"key": "n45e10", "title": "TMC-2 strip 45N 10E", "desc": "TMC-2 to LROC WAC mosaic (100 m)", "rmse": 35.8, "inl": 403, "mat": 424, "held": 27.6, "rep": "intensity+edges", "relit": false, "imgs": ["reference", "warped", "checker", "blend", "footprint", "residuals", "matches_source"], "src": "TMC-2 5.62 m", "ref": "LROC WAC 100 m", "time": 12, "stages": ["01_inputs", "03_control_grid_prior", "04_representations", "05_tile_matching", "06_robust_fit_inliers", "07_full_model_displacement", "08_registered", "09_before_after_residuals"]}];
 const PLOTS={
  footprint:['Footprint','Red: source strip after the fitted transform. Orange grid: source pixel grid warped by it. Blue dashed: where the control-grid prior places the strip. Yellow: matched locations.'],
  matches_source:['Matches','Locations of the tile matches used to fit the transform.'],
  residuals:['Residuals','Per-match error of the inliers against the fitted model.'],
  checker:['Checkerboard','Alternating tiles of reference and warped source. Craters and edges should continue across tile boundaries.']
 };
-const MODES=[['swipe','Swipe'],['fade','Blend'],['checker','Checkerboard'],['footprint','Footprint'],['matches_source','Matches'],['residuals','Residuals']];
+const MODES=[['swipe','Swipe'],['fade','Blend'],['checker','Checkerboard'],['footprint','Footprint'],['matches_source','Matches'],['residuals','Residuals'],['pipeline','Pipeline']];
+const STEPS={"01_inputs": ["Inputs", "The source strip (left) and the reference mosaic (right), each scaled to fit."], "02_dem_relit_layer": ["DEM", "The elevation model, and the DEM rendered with the source's own Sun angle. It becomes an extra reference layer."], "03_control_grid_prior": ["Prior", "The source placed on the reference by the control grid alone. It is close, but off by tens of pixels."], "04_representations": ["Representations", "The same patch as normalised intensity, gradient magnitude and oriented-gradient channels. One is chosen per scene."], "05_tile_matching": ["Tile matching", "Each tile's measured residual shift against the prior (arrows scaled up, colour is correlation confidence)."], "05b_one_tile_zncc": ["One tile", "A single tile in detail: the template, its search window and the correlation surface. The peak gives the shift."], "06_robust_fit_inliers": ["Robust fit", "Tiles that agree with the fitted model (green) and tiles rejected as outliers (red)."], "07_full_model_displacement": ["Full model", "What parallax and the smooth field add beyond the homography, within the strip."], "08_registered": ["Registered", "The source warped onto the reference grid, next to the reference, with a shared grid."], "09_before_after_residuals": ["Before and after", "Position error of the inlier tiles with the control-grid prior alone and with the full model."]};
+const stg=(k,n)=>'img/'+k+'/stages/'+n+'.jpg';
 const src=(k,n)=>'img/'+k+'/'+n+'.jpg';
 function imgEl(s,alt){const i=new Image();i.alt=alt;i.draggable=false;i.onerror=()=>{i.alt='Image not found: '+s};i.src=s;return i}
 function tag(t,side){const d=document.createElement('div');d.className='tag';d.textContent=t;d.style[side]='6px';return d}
@@ -295,6 +297,11 @@ function buildExample(e,idx){
         rng.oninput=()=>set(+rng.value);rng.value=50;set(50);lab.textContent='Reference ↔ warped source';
         ttl.textContent='Blend';cap.textContent='Fade between the reference and the warped source.';
       }
+    }else if(m==='pipeline'){
+      const nav=h('div','seg'),pic=h('div');box.append(nav,pic);
+      const show=n=>{[...nav.children].forEach(b=>b.setAttribute('aria-pressed',b.dataset.n===n));pic.innerHTML='';pic.appendChild(imgEl(stg(e.key,n),STEPS[n][0]));ttl.textContent=(e.stages.indexOf(n)+1)+'. '+STEPS[n][0];cap.textContent=STEPS[n][1]};
+      e.stages.forEach((n,i)=>{const b=h('button',null,String(i+1));b.title=STEPS[n][0];b.dataset.n=n;b.onclick=()=>show(n);nav.appendChild(b)});
+      nav.style.marginBottom='8px';show(e.stages[0]);
     }else{
       box.appendChild(imgEl(src(e.key,m),PLOTS[m][0]));ttl.textContent=PLOTS[m][0];cap.textContent=PLOTS[m][1];
     }

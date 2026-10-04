@@ -25,3 +25,6 @@ __pycache__/
 # per-project configs are local: they point at imagery that is not in the repository
 algo/configs/*.yaml
 !algo/configs/default.yaml
+
+# presentation material (diagrams, report, notes, pipeline images) is local
+slides/
