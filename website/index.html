@@ -60,6 +60,7 @@ p{margin:0 0 10px}
 .lcd b{font:400 24px var(--mono);color:var(--lcd-ink)}
 .lcd i{font:normal 12px var(--mono);margin-left:3px}
 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:14px}
+#help .grid{grid-template-columns:repeat(2,minmax(0,1fr))}
 fieldset{margin:0;border:1px solid var(--lo);border-radius:4px;padding:10px 12px;background:var(--chrome2);box-shadow:1px 1px 0 var(--hi);min-width:0}
 legend{font-weight:700;padding:0 6px;background:var(--chrome2)}
 fieldset p{margin:0 0 6px;color:var(--ink2)}
@@ -113,15 +114,16 @@ select{font:12px var(--ui);padding:4px 6px;border:1px solid var(--edge);border-r
 .hide{display:none!important}
 .ex{padding:16px 0 22px;border-top:1px solid var(--lo)}.ex:first-child{border-top:0;padding-top:6px}
 footer{max-width:1060px;margin:0 auto 30px;padding:0 16px;color:#fff;text-shadow:0 1px 0 rgba(0,0,0,.5);font-size:12px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px}
-@media(max-width:820px){.hero{grid-template-columns:1fr}.demo{grid-template-columns:1fr}.menubar a:nth-child(n+5){display:none}}
-@media(max-width:480px){.menubar{padding:0 6px;gap:0}.menubar b{margin-right:4px}.menubar a{padding:2px 6px}.menubar .clock{display:none}}
+@media(max-width:700px){#help .grid{grid-template-columns:1fr}}
+@media(max-width:820px){.hero{grid-template-columns:1fr}.demo{grid-template-columns:1fr}.menubar a:nth-child(n+6){display:none}}
+@media(max-width:480px){.menubar a[href="#data"]{display:none}.menubar{padding:0 6px;gap:0}.menubar b{margin-right:4px}.menubar a{padding:2px 6px}.menubar .clock{display:none}}
 @media(prefers-reduced-motion:reduce){.win{transition:none}.btn.def,.pole{animation:none}}
 </style>
 </head>
 <body>
 <nav class="menubar">
   <b>Selenograph</b>
-  <a href="#about">About</a><a href="#how">How it works</a><a href="#download">Download</a><a href="#data">Data</a><a href="#help">Help</a><a href="#examples">Examples</a>
+  <a href="#about">About</a><a href="#download">Download</a><a href="#data">Data</a><a href="#examples">Examples</a><a href="#how">How it works</a><a href="#help">Help</a>
   <span class="clock" id="clock">--:--</span>
 </nav>
 
@@ -155,20 +157,8 @@ footer{max-width:1060px;margin:0 auto 30px;padding:0 16px;color:#fff;text-shadow
     </div>
   </section>
 
-  <section class="win" id="how">
-    <div class="title"><i class="box"></i><span>02 · How it works</span></div>
-    <div class="body steps">
-      <div class="step"><div><b>Crop to the AOI</b><span>The source strip is cut to the area of interest using its control grid. Large strips are block-averaged to about the reference resolution.</span></div></div>
-      <div class="step"><div><b>Prior</b><span>The control grid gives a starting guess for where the strip sits on the reference. It can be kilometres off.</span></div></div>
-      <div class="step"><div><b>Capture</b><span>Several image representations are tried on the same tiles. The one on which most tiles agree on one shift is kept.</span></div></div>
-      <div class="step"><div><b>Refine</b><span>Coarse to fine: tiles are matched at higher resolution and a homography is refitted with MAGSAC at each stage.</span></div></div>
-      <div class="step"><div><b>Non-rigid and parallax</b><span>A smooth residual field and a DEM parallax term are added only if cross-validation shows they predict held-out tiles better.</span></div></div>
-      <div class="step"><div><b>Checks and output</b><span>Scale, anchor count and prior agreement are checked. A passing run writes a georeferenced GeoTIFF and tie points. Otherwise: No fit.</span></div></div>
-    </div>
-  </section>
-
   <section class="win" id="download">
-    <div class="title"><i class="box"></i><span>03 · Download</span></div>
+    <div class="title"><i class="box"></i><span>02 · Download</span></div>
     <div class="body grid">
       <fieldset><legend>Windows</legend>
         <p>Windows 10 or 11, 64-bit.</p>
@@ -191,7 +181,7 @@ footer{max-width:1060px;margin:0 auto 30px;padding:0 16px;color:#fff;text-shadow
   </section>
 
   <section class="win" id="data">
-    <div class="title"><i class="box"></i><span>04 · Data</span></div>
+    <div class="title"><i class="box"></i><span>03 · Data</span></div>
     <div class="body">
       <p>The app does not ship imagery. A project needs a <b>source</b> product and a <b>reference</b> mosaic, downloaded separately.</p>
       <div class="grid">
@@ -215,21 +205,33 @@ footer{max-width:1060px;margin:0 auto 30px;padding:0 16px;color:#fff;text-shadow
     </div>
   </section>
 
+  <section class="win" id="examples">
+    <div class="title"><i class="box"></i><span>04 · Examples</span></div>
+    <div class="body">
+      <p class="cap">Outputs of real registration runs on Chandrayaan-2 data. Drag the bar to compare the reference with the registered source, or open <b>Pipeline</b> to step through the stages of the run.</p>
+      <div id="exList"></div>
+    </div>
+  </section>
+
+  <section class="win" id="how">
+    <div class="title"><i class="box"></i><span>05 · How it works</span></div>
+    <div class="body steps">
+      <div class="step"><div><b>Crop to the AOI</b><span>The source strip is cut to the area of interest using its control grid. Large strips are block-averaged to about the reference resolution.</span></div></div>
+      <div class="step"><div><b>Prior</b><span>The control grid gives a starting guess for where the strip sits on the reference. It can be kilometres off.</span></div></div>
+      <div class="step"><div><b>Capture</b><span>Several image representations are tried on the same tiles. The one on which most tiles agree on one shift is kept.</span></div></div>
+      <div class="step"><div><b>Refine</b><span>Coarse to fine: tiles are matched at higher resolution and a homography is refitted with MAGSAC at each stage.</span></div></div>
+      <div class="step"><div><b>Non-rigid and parallax</b><span>A smooth residual field and a DEM parallax term are added only if cross-validation shows they predict held-out tiles better.</span></div></div>
+      <div class="step"><div><b>Checks and output</b><span>Scale, anchor count and prior agreement are checked. A passing run writes a georeferenced GeoTIFF and tie points. Otherwise: No fit.</span></div></div>
+    </div>
+  </section>
+
   <section class="win" id="help">
-    <div class="title"><i class="box"></i><span>05 · Help</span></div>
+    <div class="title"><i class="box"></i><span>06 · Help</span></div>
     <div class="body grid">
       <fieldset><legend>New project</legend><p>File ▸ New project. Pick the source folder, then Fill from source to take the AOI from the product footprint. Set the reference GeoTIFF.</p></fieldset>
       <fieldset><legend>Run</legend><p>Open a project and press Run. The banner shows the stage and elapsed time.</p></fieldset>
       <fieldset><legend>No fit</legend><p>Source has no contrast, or too little overlap with the reference. The run page lists what was tried.</p></fieldset>
       <fieldset><legend>Reading the result</legend><p>RMSE is the residual of inlier matches. Held-out RMSE is the error on tiles not used for the fit. There is no ground truth for real pairs.</p></fieldset>
-    </div>
-  </section>
-
-  <section class="win" id="examples">
-    <div class="title"><i class="box"></i><span>06 · Examples</span></div>
-    <div class="body">
-      <p class="cap">Outputs of real registration runs on Chandrayaan-2 data. Drag the bar to compare the reference with the registered source, or open <b>Pipeline</b> to step through the stages of the run.</p>
-      <div id="exList"></div>
     </div>
   </section>
 </main>
