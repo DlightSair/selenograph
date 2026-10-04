@@ -69,7 +69,7 @@ fieldset p:last-child{margin:0}
 .seg button{font:12px var(--ui);padding:4px 12px;border:0;border-right:1px solid var(--edge);background:linear-gradient(#fafafa,#cfcfcf);cursor:pointer}
 .seg button:last-child{border-right:0}
 .seg button[aria-pressed=true]{background:linear-gradient(var(--accent-hi),var(--accent));color:#fff;font-weight:700}
-.shot{background:#9a9a9a;border:1px solid var(--edge);border-radius:4px;padding:8px;display:flex;align-items:center;justify-content:center;box-shadow:inset 1px 1px 3px rgba(0,0,0,.4)}
+.shot{min-height:220px;background:#9a9a9a;border:1px solid var(--edge);border-radius:4px;padding:8px;display:flex;align-items:center;justify-content:center;box-shadow:inset 1px 1px 3px rgba(0,0,0,.4)}
 .shot img{max-width:100%;display:block;transition:opacity .25s}
 .pipe{position:relative;flex:1;min-width:0;height:min(68vh,560px);min-height:260px;display:flex;align-items:center;justify-content:center;outline:0;touch-action:pan-y}
 .pipe img{position:absolute;inset:0;margin:auto;width:auto;height:auto;max-width:100%;max-height:100%;object-fit:contain;opacity:0;pointer-events:none;transition:opacity .12s}
@@ -293,7 +293,13 @@ function buildPipe(e){
   el.onclick=ev=>{if(moved||ev.target.tagName==='BUTTON')return;window.open(stg(e.key,e.stages[P.cur]),'_blank','noopener')};
   return P}
 const src=(k,n)=>'img/'+k+'/'+n+'.jpg';
-function imgEl(s,alt){const i=new Image();i.alt=alt;i.draggable=false;i.onerror=()=>{i.alt='Image not found: '+s};i.src=s;return i}
+const IMGS=new Map();
+function imgEl(s,alt){let i=IMGS.get(s);
+  if(!i){i=new Image();i.draggable=false;i.decoding='async';i.onerror=()=>{i.alt='Image not found: '+s};i.src=s;IMGS.set(s,i)}
+  i.alt=alt;return i}
+const WARM=['reference','warped','checker','blend','footprint','matches_source','residuals'];
+function warm(e){if(e._warm)return;e._warm=1;WARM.forEach((n,k)=>setTimeout(()=>imgEl(src(e.key,n),n),k*150));
+  setTimeout(()=>{const nx=EX[EX.indexOf(e)+1];if(nx)warm(nx)},2500)}
 function tag(t,side){const d=document.createElement('div');d.className='tag';d.textContent=t;d.style[side]='6px';return d}
 function countUp(el,to,dec,ms){const t0=Date.now(),h=setInterval(()=>{const k=Math.min(1,(Date.now()-t0)/ms);el.textContent=(to*(1-Math.pow(1-k,3))).toFixed(dec);if(k>=1)clearInterval(h)},30)}
 function h(tagName,cls,html){const d=document.createElement(tagName);if(cls)d.className=cls;if(html!=null)d.innerHTML=html;return d}
@@ -343,12 +349,18 @@ function buildExample(e,idx){
       box.appendChild(imgEl(src(e.key,m),PLOTS[m][0]));ttl.textContent=PLOTS[m][0];cap.textContent=PLOTS[m][1];
     }
   }
-  MODES.forEach(m=>{const b=h('button',null,m[1]);b.dataset.m=m[0];b.onclick=()=>setMode(m[0]);seg.appendChild(b)});
+  MODES.forEach(m=>{const b=h('button',null,m[1]);b.dataset.m=m[0];b.onclick=()=>setMode(m[0]);
+    const pre=()=>{if(PLOTS[m[0]])imgEl(src(e.key,m[0]),PLOTS[m[0]][0]);else if(m[0]==='pipeline'&&!pipeCache[e.key])pipeCache[e.key]=buildPipe(e);else if(m[0]!=='pipeline'){imgEl(src(e.key,'reference'),'Reference');imgEl(src(e.key,'warped'),'Warped source')}};
+    b.addEventListener('pointerenter',pre);b.addEventListener('touchstart',pre,{passive:true});seg.appendChild(b)});
   setMode('swipe');
   return w;
 }
 EX.forEach((e,i)=>document.getElementById('exList').appendChild(buildExample(e,i)));
-addEventListener('load',()=>setTimeout(()=>EX.forEach(e=>{if(e.stages&&e.stages[0]){new Image().src=stg(e.key,e.stages[0])}}),1500));
+if('IntersectionObserver' in window){
+  const wio=new IntersectionObserver(es=>es.forEach(en=>{if(en.isIntersecting){warm(EX[+en.target.dataset.i]);wio.unobserve(en.target)}}),{rootMargin:'900px 0px'});
+  document.querySelectorAll('#exList .ex').forEach((n,i)=>{n.dataset.i=i;wio.observe(n)});
+}else EX.forEach(warm);
+addEventListener('load',()=>setTimeout(()=>{warm(EX[0]);EX.forEach(e=>{if(e.stages&&e.stages[0]){new Image().src=stg(e.key,e.stages[0])}})},1500));
 </script>
 </body>
 </html>
