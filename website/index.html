@@ -22,8 +22,8 @@ body{margin:0;font:13px/1.45 var(--ui);color:var(--ink);background:var(--desk);
 a{color:var(--accent-lo)}
 .menubar{position:sticky;top:0;z-index:10;height:24px;display:flex;align-items:center;gap:2px;padding:0 10px;
   background:linear-gradient(#f4f4f4,#d4d4d4);border-bottom:1px solid var(--edge);font-size:12.5px}
-.menubar b{margin-right:10px}
-.menubar a{color:var(--ink);text-decoration:none;padding:2px 9px;border-radius:3px}
+.menubar b{margin-right:10px;white-space:nowrap}
+.menubar a{color:var(--ink);text-decoration:none;padding:2px 9px;border-radius:3px;white-space:nowrap}
 .menubar a:hover{background:var(--accent);color:#fff}
 .menubar .clock{margin-left:auto;font-family:var(--mono);font-size:11.5px;color:var(--ink2)}
 main{max-width:1060px;margin:26px auto 40px;padding:0 16px;display:grid;gap:22px}
@@ -70,6 +70,15 @@ fieldset p:last-child{margin:0}
 .seg button[aria-pressed=true]{background:linear-gradient(var(--accent-hi),var(--accent));color:#fff;font-weight:700}
 .shot{background:#9a9a9a;border:1px solid var(--edge);border-radius:4px;padding:8px;display:flex;align-items:center;justify-content:center;box-shadow:inset 1px 1px 3px rgba(0,0,0,.4)}
 .shot img{max-width:100%;display:block;transition:opacity .25s}
+.pipe{position:relative;flex:1;min-width:0;height:min(68vh,560px);min-height:260px;display:flex;align-items:center;justify-content:center;outline:0;touch-action:pan-y}
+.pipe img{position:absolute;inset:0;margin:auto;width:auto;height:auto;max-width:100%;max-height:100%;object-fit:contain;opacity:0;pointer-events:none;transition:opacity .12s}
+.pipe img.on{opacity:1}
+.pipe{cursor:zoom-in}
+.pipe .ld{position:absolute;color:#fff;font-size:12px;text-shadow:0 1px 0 rgba(0,0,0,.5)}
+.pipe .arr{position:absolute;top:50%;transform:translateY(-50%);width:34px;height:46px;padding:0;border:1px solid var(--edge);border-radius:4px;background:linear-gradient(#fafafa,#cfcfcf);color:var(--ink);font:700 22px/1 var(--ui);cursor:pointer;z-index:2}
+.pipe .arr.l{left:2px}.pipe .arr.r{right:2px}
+.pipe .arr:disabled{opacity:.3;cursor:default}
+.pipe .cnt{position:absolute;bottom:2px;left:50%;transform:translateX(-50%);font:11.5px var(--mono);background:rgba(0,0,0,.6);color:#fff;padding:2px 10px;border-radius:10px;z-index:2;white-space:nowrap}
 table{border-collapse:collapse;width:100%;font-size:12px}
 td,th{padding:3px 8px;text-align:left;border-bottom:1px solid #e3e3e3}
 th{background:linear-gradient(#f4f4f4,#d4d4d4);border-bottom:1px solid var(--edge);font-weight:700}
@@ -105,6 +114,7 @@ select{font:12px var(--ui);padding:4px 6px;border:1px solid var(--edge);border-r
 .ex{padding:16px 0 22px;border-top:1px solid var(--lo)}.ex:first-child{border-top:0;padding-top:6px}
 footer{max-width:1060px;margin:0 auto 30px;padding:0 16px;color:#fff;text-shadow:0 1px 0 rgba(0,0,0,.5);font-size:12px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px}
 @media(max-width:820px){.hero{grid-template-columns:1fr}.demo{grid-template-columns:1fr}.menubar a:nth-child(n+5){display:none}}
+@media(max-width:480px){.menubar{padding:0 6px;gap:0}.menubar b{margin-right:4px}.menubar a{padding:2px 6px}.menubar .clock{display:none}}
 @media(prefers-reduced-motion:reduce){.win{transition:none}.btn.def,.pole{animation:none}}
 </style>
 </head>
@@ -255,6 +265,31 @@ const PLOTS={
 const MODES=[['swipe','Swipe'],['fade','Blend'],['checker','Checkerboard'],['footprint','Footprint'],['matches_source','Matches'],['residuals','Residuals'],['pipeline','Pipeline']];
 const STEPS={"01_inputs": ["Inputs", "The source strip (left) and the reference mosaic (right), each scaled to fit."], "02_dem_relit_layer": ["DEM", "The elevation model, and the DEM rendered with the source's own Sun angle. It becomes an extra reference layer."], "03_control_grid_prior": ["Prior", "The source placed on the reference by the control grid alone. It is close, but off by tens of pixels."], "04_representations": ["Representations", "The same patch as normalised intensity, gradient magnitude and oriented-gradient channels. One is chosen per scene."], "05_tile_matching": ["Tile matching", "Each tile's measured residual shift against the prior (arrows scaled up, colour is correlation confidence)."], "05b_one_tile_zncc": ["One tile", "A single tile in detail: the template, its search window and the correlation surface. The peak gives the shift."], "06_robust_fit_inliers": ["Robust fit", "Tiles that agree with the fitted model (green) and tiles rejected as outliers (red)."], "07_full_model_displacement": ["Full model", "What parallax and the smooth field add beyond the homography, within the strip."], "08_registered": ["Registered", "The source warped onto the reference grid, next to the reference, with a shared grid."], "09_before_after_residuals": ["Before and after", "Position error of the inlier tiles with the control-grid prior alone and with the full model."]};
 const stg=(k,n)=>'img/'+k+'/stages/'+n+'.jpg';
+const pipeCache={};
+function buildPipe(e){
+  const el=h('div','pipe'),ld=h('span','ld','Loading…'),L=e.stages.length;
+  const P={el,cur:0,onChange:null};
+  const imgs=e.stages.map((n,i)=>{const im=new Image();im.alt=STEPS[n][0];im.draggable=false;im.decoding='async';
+    if(i===0)im.fetchPriority='high';
+    im.onload=()=>{if(P.cur===i)ld.style.display='none'};
+    im.onerror=()=>{im.alt='Image not found'};
+    im.src=stg(e.key,n);return im});
+  const l=h('button','arr l','‹'),r=h('button','arr r','›'),cnt=h('div','cnt');
+  l.setAttribute('aria-label','Previous stage');r.setAttribute('aria-label','Next stage');
+  el.append(ld,...imgs,l,r,cnt);el.tabIndex=0;
+  P.go=i=>{i=Math.max(0,Math.min(L-1,i));P.cur=i;
+    imgs.forEach((im,k)=>im.classList.toggle('on',k===i));
+    ld.style.display=(imgs[i].complete&&imgs[i].naturalWidth)?'none':'block';
+    cnt.textContent=(i+1)+' / '+L+' · '+STEPS[e.stages[i]][0];
+    l.disabled=i===0;r.disabled=i===L-1;
+    if(P.onChange)P.onChange(e.stages[i],i)};
+  l.onclick=()=>P.go(P.cur-1);r.onclick=()=>P.go(P.cur+1);
+  el.onkeydown=ev=>{if(ev.key==='ArrowLeft'){P.go(P.cur-1);ev.preventDefault()}else if(ev.key==='ArrowRight'){P.go(P.cur+1);ev.preventDefault()}};
+  let x0=null,moved=false;el.onpointerdown=ev=>{x0=ev.clientX;moved=false};
+  el.onpointerup=ev=>{if(x0!=null&&Math.abs(ev.clientX-x0)>50&&ev.target.tagName!=='BUTTON'){moved=true;P.go(P.cur+(ev.clientX<x0?1:-1))}x0=null};
+  el.title='Click to open the full-size image';
+  el.onclick=ev=>{if(moved||ev.target.tagName==='BUTTON')return;window.open(stg(e.key,e.stages[P.cur]),'_blank','noopener')};
+  return P}
 const src=(k,n)=>'img/'+k+'/'+n+'.jpg';
 function imgEl(s,alt){const i=new Image();i.alt=alt;i.draggable=false;i.onerror=()=>{i.alt='Image not found: '+s};i.src=s;return i}
 function tag(t,side){const d=document.createElement('div');d.className='tag';d.textContent=t;d.style[side]='6px';return d}
@@ -298,10 +333,10 @@ function buildExample(e,idx){
         ttl.textContent='Blend';cap.textContent='Fade between the reference and the warped source.';
       }
     }else if(m==='pipeline'){
-      const nav=h('div','seg'),pic=h('div');box.append(nav,pic);
-      const show=n=>{[...nav.children].forEach(b=>b.setAttribute('aria-pressed',b.dataset.n===n));pic.innerHTML='';pic.appendChild(imgEl(stg(e.key,n),STEPS[n][0]));ttl.textContent=(e.stages.indexOf(n)+1)+'. '+STEPS[n][0];cap.textContent=STEPS[n][1]};
-      e.stages.forEach((n,i)=>{const b=h('button',null,String(i+1));b.title=STEPS[n][0];b.dataset.n=n;b.onclick=()=>show(n);nav.appendChild(b)});
-      nav.style.marginBottom='8px';show(e.stages[0]);
+      const P=pipeCache[e.key]||(pipeCache[e.key]=buildPipe(e));
+      box.appendChild(P.el);
+      P.onChange=(n,i)=>{ttl.textContent=(i+1)+'. '+STEPS[n][0];cap.textContent=STEPS[n][1]};
+      P.go(P.cur);
     }else{
       box.appendChild(imgEl(src(e.key,m),PLOTS[m][0]));ttl.textContent=PLOTS[m][0];cap.textContent=PLOTS[m][1];
     }
@@ -311,6 +346,7 @@ function buildExample(e,idx){
   return w;
 }
 EX.forEach((e,i)=>document.getElementById('exList').appendChild(buildExample(e,i)));
+addEventListener('load',()=>setTimeout(()=>EX.forEach(e=>{if(e.stages&&e.stages[0]){new Image().src=stg(e.key,e.stages[0])}}),1500));
 </script>
 </body>
 </html>
